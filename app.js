@@ -386,30 +386,63 @@ function setupForm() {
     };
 
     // Form Submit
-    document.getElementById('add-item-form').addEventListener('submit', (e) => {
+    document.getElementById('add-item-form')?.addEventListener('submit', (e) => {
         e.preventDefault();
 
-        const loc = { house: form.house.value, room: form.room.value, storage: form.storage.value };
-        if (!loc.house || !loc.room || !loc.storage) return alert("Incomplete Location");
+        // Defensive Checks for Inputs
+        if (!form.name || !form.category || !form.house || !form.room || !form.storage) {
+            alert("Error: Missing form inputs. Please reload.");
+            return;
+        }
+
+        const nameVal = form.name.value.trim();
+        const catVal = form.category.value;
+        const loc = {
+            house: form.house.value,
+            room: form.room.value,
+            storage: form.storage.value
+        };
+
+        // Explicit Validation with Clear Messages
+        if (!nameVal) {
+            alert("Please enter an Item Name.");
+            form.name.focus();
+            return;
+        }
+        if (!catVal) {
+            alert("Please select a Category.");
+            return;
+        }
+        if (!loc.house || !loc.room || !loc.storage) {
+            alert("Please select a full Location (House, Room, and Storage).");
+            return;
+        }
+
+        const qty = parseInt(form.quantity?.value) || 1;
 
         const newItem = {
             id: Date.now().toString(),
-            barcode: form.barcode.value.trim(),
-            name: form.name.value.trim(),
-            category: form.category.value,
-            quantity: parseInt(form.quantity.value) || 1,
-            isOpened: form.isOpened.checked,
-            openedDate: form.isOpened.checked ? form.openedDate.value : null,
-            shelfLife: form.isOpened.checked ? form.shelfLife.value : null,
-            expiry: form.expiry.value,
+            barcode: form.barcode?.value.trim() || "",
+            name: nameVal,
+            category: catVal,
+            quantity: qty,
+            isOpened: form.isOpened?.checked || false,
+            openedDate: form.isOpened?.checked ? form.openedDate?.value : null,
+            shelfLife: form.isOpened?.checked ? form.shelfLife?.value : null,
+            expiry: form.expiry?.value || "",
             location: loc,
             createdAt: new Date().toISOString()
         };
 
         AppState.items.push(newItem);
         Storage.save();
-        alert("Item saved!");
-        form.name.value = ''; form.barcode.value = '';
+        alert("Item saved successfully!");
+
+        // Reset critical fields
+        form.name.value = '';
+        if (form.barcode) form.barcode.value = '';
+        if (form.expiry) form.expiry.value = '';
+        // Keep Location & Category for easier entry of multiple items
     });
 }
 
