@@ -83,6 +83,153 @@ main {
     }
 }
 
+/* Toolbar & Filters */
+.toolbar-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.search-wrap {
+    flex: 1;
+}
+
+.icon-btn-medium {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.filter-panel {
+    background: #f2f2f7;
+    padding: 12px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+
+.filter-panel.hidden {
+    display: none;
+}
+
+.context-pill {
+    background: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    display: inline-block;
+    font-weight: 500;
+    margin-right: 8px;
+}
+
+.context-pill.empty {
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.sort-scroll {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.label-tiny {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+/* Form Extras */
+.two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+}
+
+.input-suffix {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-suffix input {
+    padding-right: 40px;
+}
+
+.input-suffix span {
+    position: absolute;
+    right: 12px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    pointer-events: none;
+}
+
+/* Tree View */
+.tree-container {
+    background: white;
+    border-radius: 12px;
+    padding: 8px;
+}
+
+.tree-node {
+    margin: 4px 0;
+}
+
+.tree-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    border-radius: 6px;
+    background: #f9f9fc;
+}
+
+.tree-header.house {
+    font-weight: 700;
+    background: #e3e3e8;
+}
+
+.tree-header.room {
+    font-weight: 600;
+    margin-left: 12px;
+    background: #f2f2f7;
+}
+
+.tree-header.storage {
+    font-weight: 400;
+    margin-left: 24px;
+    color: #555;
+}
+
+.tree-actions button {
+    background: none;
+    border: none;
+    font-size: 12px;
+    padding: 4px 6px;
+    color: var(--primary-color);
+}
+
+.tree-actions button.del {
+    color: var(--danger-color);
+}
+
 /* Inventory List */
 .filters-container {
     margin-bottom: 16px;

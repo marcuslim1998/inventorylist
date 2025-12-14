@@ -1,29 +1,23 @@
 /**
- * Inventory Management Logic (Refactored)
- * - Location Object Model {house, room, storage}
- * - Hierarchical Location Selection
- * - Auto-fill from History
- * - Robust Scanner Lifecycle
+ * Inventory Management Logic (Refactored Round 2)
+ * - Smart Scanning (Location Context vs Item Search)
+ * - Item Logic (Qty, Opened, Shelf Life)
+ * - Location Tree View & CRUD
  */
 
 // --- STATE MANAGEMENT ---
 const AppState = {
     items: [],
-    // New Structure: Categories are just a flat list of types
     categories: ['Food', 'Facial', 'General', 'Medicine', 'Stationery'],
+    locationStructure: {}, // { House: { Room: [Storage] } }
 
-    // New Structure: Locations as a tree-like object or flat list of objects?
-    // Flat list of unique objects is easier to manage for now, or normalization.
-    // Let's store unique Houses -> Rooms -> Storages.
-    // Simplest: Store *Items* with { location: { house, room, storage } }
-    // AND maintain a set of "Known Locations" for the dropdowns.
-    locationStructure: {
-        // "Home": { "Kitchen": ["Pantry", "Fridge"], "Living Room": ["Cabinet"] }
+    // UI State
+    activeContext: null, // { house, room, storage } (Filter context)
+    sortBy: 'date',
+    filters: {
+        expired: false,
+        soon: false
     },
-
-    // Current Context
-    currentLocation: null, // { house, room, storage } OR null
-    filterMode: 'all', // 'all' | 'location' | 'category'
 
     // Scanner
     scannerTarget: null,
@@ -33,7 +27,7 @@ const AppState = {
 
 // --- STORAGE ---
 const Storage = {
-    KEY_ITEMS: 'inv_items_v3_obj', // Version bump for data migration
+    KEY_ITEMS: 'inv_items_v4', // Version bump for new fields
     KEY_LOCS: 'inv_loc_struct_v1',
     KEY_CATS: 'inv_cats_v2',
 
@@ -44,56 +38,52 @@ const Storage = {
     },
 
     load: () => {
-        const i = localStorage.getItem(Storage.KEY_ITEMS);
-        const l = localStorage.getItem(Storage.KEY_LOCS);
-        const c = localStorage.getItem(Storage.KEY_CATS);
+        try {
+            const i = localStorage.getItem(Storage.KEY_ITEMS);
+            if (i) AppState.items = JSON.parse(i);
 
-        if (c) AppState.categories = JSON.parse(c);
-        if (l) AppState.locationStructure = JSON.parse(l);
+            const l = localStorage.getItem(Storage.KEY_LOCS);
+            if (l) AppState.locationStructure = JSON.parse(l);
 
-        if (i) {
-            AppState.items = JSON.parse(i);
-        } else {
-            // Check for v2 migration?
-            // For simplicity in this prompt context, we'll start fresh or leave old keys alone.
-            // PROMPT: "Location must be stored as object"
-        }
+            const c = localStorage.getItem(Storage.KEY_CATS);
+            if (c) AppState.categories = JSON.parse(c);
+        } catch (e) { console.error("Load error", e); }
 
-        // Ensure defaults
+        // Defaults
         if (Object.keys(AppState.locationStructure).length === 0) {
-            // Default Seed
-            AppState.locationStructure = {
-                "Home": { "Kitchen": ["Pantry", "Fridge"] },
-                "Office": { "Desk": ["Drawer 1"] }
-            };
+            AppState.locationStructure = { "Home": { "Kitchen": ["Pantry"] } };
         }
     }
 };
 
 // --- DOM ELEMENTS ---
-// Views
-const views = {
-    inventory: document.getElementById('view-inventory'),
-    add: document.getElementById('view-add-item'),
-    locations: document.getElementById('view-locations')
-};
+const viewInventory = document.getElementById('view-inventory');
+const viewAdd = document.getElementById('view-add-item');
+const viewLocations = document.getElementById('view-locations');
 const navItems = document.querySelectorAll('.nav-item');
 
 // Inventory View
 const inventoryList = document.getElementById('inventory-list');
 const searchInput = document.getElementById('inventory-search');
-const filterTabs = document.querySelectorAll('.filter-tab');
-const activeFilterDisplay = document.getElementById('active-filter-display');
-const filterContextText = document.getElementById('filter-context-text');
-const btnClearFilter = document.getElementById('btn-clear-filter');
+const btnToggleFilters = document.getElementById('btn-toggle-filters');
+const filterPanel = document.getElementById('filter-panel');
+const activeContextDisplay = document.getElementById('active-context-display');
+const btnClearContext = document.getElementById('btn-clear-context');
+const sortChips = document.querySelectorAll('.chip');
+const filterCheckboxes = document.querySelectorAll('input[name="filter-status"]');
 
-// Add Item View
+// Add Form
 const form = {
     barcode: document.getElementById('item-barcode'),
     name: document.getElementById('item-name'),
     category: document.getElementById('item-category'),
     expiry: document.getElementById('item-expiry'),
-    // Hierarchy inputs
+    quantity: document.getElementById('item-quantity'),
+    isOpened: document.getElementById('item-opened'),
+    openedDate: document.getElementById('item-opened-date'),
+    shelfLife: document.getElementById('item-shelf-life'),
+    openedMeta: document.getElementById('opened-meta-fields'),
+
     house: document.getElementById('loc-house'),
     room: document.getElementById('loc-room'),
     storage: document.getElementById('loc-storage'),
@@ -107,14 +97,8 @@ const form = {
 };
 
 // Location View
-const locDisp = {
-    house: document.getElementById('disp-house'),
-    room: document.getElementById('disp-room'),
-    storage: document.getElementById('disp-storage'),
-    // btnReset: document.getElementById('btn-reset-location'), // Fixed: was btn-manual-location-tab in prev plan, updated in HTML?
-    btnScan: document.getElementById('btn-scan-location-tab'),
-    btnReset: document.getElementById('btn-reset-location')
-};
+const locationTreeContainer = document.getElementById('location-tree-container');
+const btnAddRoot = document.getElementById('btn-add-root');
 
 // Scanner
 const scannerOverlay = document.getElementById('scanner-overlay');
@@ -126,39 +110,17 @@ const scannerStatus = document.getElementById('scanner-status');
 function init() {
     Storage.load();
     setupNavigation();
-    setupFilters();
+    setupInventoryUI();
     setupForm();
     setupScannerUI();
+    setupLocationsUI();
 
-    // Initial Render
     renderInventory();
-    updateLocationView();
-}
-
-// --- HELPER: LOCATION MANAGMENT ---
-function updateLocationStructure(house, room, storage) {
-    if (!house) return;
-    if (!AppState.locationStructure[house]) AppState.locationStructure[house] = {};
-
-    if (room) {
-        if (!AppState.locationStructure[house][room]) AppState.locationStructure[house][room] = [];
-
-        if (storage) {
-            if (!AppState.locationStructure[house][room].includes(storage)) {
-                AppState.locationStructure[house][room].push(storage);
-            }
-        }
-    }
-    Storage.save();
-}
-
-function getLocationString(locObj) {
-    if (!locObj) return "Unknown";
-    return `${locObj.house} > ${locObj.room} > ${locObj.storage}`;
+    renderLocationTree();
 }
 
 
-// --- NAVIGATION & VIEWS ---
+// --- NAVIGATION ---
 function setupNavigation() {
     navItems.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -178,34 +140,43 @@ function switchView(id) {
         else n.classList.remove('active');
     });
 
-    if (id === 'view-add-item') {
-        initAddForm();
-    } else if (id === 'view-inventory') {
-        renderInventory();
-    }
+    if (id === 'view-add-item') initAddForm();
+    if (id === 'view-inventory') renderInventory();
+    if (id === 'view-locations') renderLocationTree();
 }
 
 
-// --- INVENTORY FILTERING ---
-function setupFilters() {
-    filterTabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            filterTabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
+// --- INVENTORY UI ---
+function setupInventoryUI() {
+    // Toolbar
+    document.getElementById('btn-scan-header').addEventListener('click', () => startScanning('smart-scan'));
 
-            const mode = tab.getAttribute('data-filter-mode');
-            AppState.filterMode = mode;
+    // Filter Panel Toggle
+    btnToggleFilters.addEventListener('click', () => {
+        filterPanel.classList.toggle('hidden');
+    });
 
-            // If filtering by location but none set, prompt or show all?
-            // If filtering by location, we filter by AppState.currentLocation
-
+    // Sort Chips
+    sortChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            sortChips.forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            AppState.sortBy = chip.getAttribute('data-sort');
             renderInventory();
         });
     });
 
-    btnClearFilter.addEventListener('click', () => {
-        AppState.currentLocation = null;
-        updateLocationView();
+    // Checkbox Filters
+    filterCheckboxes.forEach(cb => {
+        cb.addEventListener('change', () => {
+            AppState.filters[cb.value] = cb.checked;
+            renderInventory();
+        });
+    });
+
+    // Context
+    btnClearContext.addEventListener('click', () => {
+        AppState.activeContext = null;
         renderInventory();
     });
 
@@ -215,47 +186,61 @@ function setupFilters() {
 function renderInventory() {
     inventoryList.innerHTML = '';
 
+    // Update Context UI
+    if (AppState.activeContext) {
+        const c = AppState.activeContext;
+        activeContextDisplay.textContent = `${c.house} > ${c.room || '*'} > ${c.storage || '*'}`;
+        activeContextDisplay.classList.remove('empty');
+    } else {
+        activeContextDisplay.textContent = "All Locations";
+        activeContextDisplay.classList.add('empty');
+    }
+
+    // Filter Logic
     let filtered = AppState.items.filter(item => {
-        // 1. Text Search
+        // 1. Text Search (Search Name or Barcode)
         const term = searchInput.value.toLowerCase();
         if (term && !item.name.toLowerCase().includes(term) && !item.barcode.includes(term)) {
             return false;
         }
 
-        // 2. Tab Modes
-        if (AppState.filterMode === 'location') {
-            // Must match current location context (if set)
-            if (AppState.currentLocation) {
-                // Strict match? Or hierarchical match?
-                // Let's do Hierarchical: Match House, then Room if set, then Storage if set
-                const c = AppState.currentLocation;
-                if (item.location.house !== c.house) return false;
-                if (c.room && item.location.room !== c.room) return false;
-                if (c.storage && item.location.storage !== c.storage) return false;
-            }
-        } else if (AppState.filterMode === 'category') {
-            // Maybe sort by category? Or if we had a specific category selected.
-            // For now just Sort by Category
+        // 2. Active Context (Location Filter)
+        if (AppState.activeContext) {
+            const c = AppState.activeContext;
+            if (item.location.house !== c.house) return false;
+            if (c.room && item.location.room !== c.room) return false;
+            if (c.storage && item.location.storage !== c.storage) return false;
         }
+
+        // 3. Status Filters (Expired / Soon)
+        // Need to calculate status first to filter by it
+        const effDate = getEffectiveExpiry(item);
+        const daysLeft = effDate ? getDaysUntil(effDate) : 9999;
+
+        if (AppState.filters.expired && daysLeft >= 0) return false; // Only show < 0
+        if (AppState.filters.soon && (daysLeft < 0 || daysLeft > 30)) return false; // Only show 0-30? Assuming 'soon' means within 30 days.
 
         return true;
     });
 
-    // Sort
-    if (AppState.filterMode === 'category') {
-        filtered.sort((a, b) => a.category.localeCompare(b.category));
-    } else {
-        // Default sort by Date added (newest first) or Location
-        filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    }
-
-    // Display Active Filter Context
-    if (AppState.currentLocation && AppState.filterMode === 'location') {
-        activeFilterDisplay.classList.remove('hidden');
-        filterContextText.textContent = `In: ${getLocationString(AppState.currentLocation)}`;
-    } else {
-        activeFilterDisplay.classList.add('hidden');
-    }
+    // Sort Logic
+    filtered.sort((a, b) => {
+        if (AppState.sortBy === 'date') return new Date(b.createdAt) - new Date(a.createdAt); // Newest first
+        if (AppState.sortBy === 'location') {
+            const la = `${a.location.house}${a.location.room}${a.location.storage}`;
+            const lb = `${b.location.house}${b.location.room}${b.location.storage}`;
+            return la.localeCompare(lb);
+        }
+        if (AppState.sortBy === 'expiry') {
+            const da = getEffectiveExpiry(a);
+            const db = getEffectiveExpiry(b);
+            if (!da) return 1;
+            if (!db) return -1;
+            return da - db;
+        }
+        if (AppState.sortBy === 'category') return a.category.localeCompare(b.category);
+        return 0;
+    });
 
     if (filtered.length === 0) {
         inventoryList.innerHTML = `<div class="empty-state"><p>No items found.</p></div>`;
@@ -266,22 +251,29 @@ function renderInventory() {
         const card = document.createElement('div');
         card.className = 'inventory-item';
 
+        // Expiry Status
+        const effDate = getEffectiveExpiry(item);
         let expiryHtml = '';
-        if (item.expiry) {
-            const diff = Math.ceil((new Date(item.expiry) - new Date()) / (86400000));
+        if (effDate) {
+            const daysLeft = getDaysUntil(effDate);
             let cls = 'ok';
-            if (diff < 0) cls = 'expired';
-            else if (diff < 7) cls = 'soon';
-            expiryHtml = `<span class="expiry-tag ${cls}">Exp: ${item.expiry}</span>`;
+            let label = 'Exp';
+
+            if (daysLeft < 0) cls = 'expired';
+            else if (daysLeft < 14) cls = 'soon'; // 2 weeks warning for food?
+
+            if (item.isOpened) label = 'Eff. Exp'; // effective expiry
+
+            const dateStr = effDate.toISOString().split('T')[0];
+            expiryHtml = `<span class="expiry-tag ${cls}">${label}: ${dateStr}</span>`;
         }
 
         card.innerHTML = `
             <div class="header">
                 <div>
-                   <h3>${escapeHtml(item.name)}</h3>
+                   <h3>${escapeHtml(item.name)} <span style="font-weight:400; font-size:14px; color:#555">x${item.quantity || 1}</span></h3>
                    <small class="barcode">${escapeHtml(item.barcode)}</small>
                 </div>
-                <!-- Mini Location Badge -->
                 <div style="text-align:right; font-size:11px; color:var(--primary-color)">
                     <div>${escapeHtml(item.location.house)}</div>
                     <div>${escapeHtml(item.location.room)}</div>
@@ -289,7 +281,7 @@ function renderInventory() {
                 </div>
             </div>
             <div class="meta">
-                <span>${escapeHtml(item.category)}</span>
+                <span>${escapeHtml(item.category)} ${item.isOpened ? '(Opened)' : ''}</span>
                 ${expiryHtml}
             </div>
         `;
@@ -297,42 +289,62 @@ function renderInventory() {
     });
 }
 
+function getEffectiveExpiry(item) {
+    let dates = [];
+    if (item.expiry) dates.push(new Date(item.expiry));
 
-// --- ADD ITEM FORM & HIERARCHY ---
-function initAddForm() {
-    // Populate Categories
-    form.category.innerHTML = '';
-    AppState.categories.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c;
-        opt.textContent = c;
-        form.category.appendChild(opt);
-    });
-
-    // Populate Hierarchy Root (Houses)
-    updateHierarchySelects('house');
-
-    // Inherit Current Location if set
-    if (AppState.currentLocation) {
-        setFormLocation(AppState.currentLocation);
+    if (item.isOpened && item.openedDate && item.shelfLife) {
+        const openD = new Date(item.openedDate);
+        // Add months
+        openD.setMonth(openD.getMonth() + parseInt(item.shelfLife));
+        dates.push(openD);
     }
+
+    if (dates.length === 0) return null;
+    return new Date(Math.min(...dates));
 }
 
-function updateHierarchySelects(levelChanged) {
-    // levelChanged: 'house' | 'room' (triggers next level update)
+function getDaysUntil(dateObj) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    dateObj.setHours(0, 0, 0, 0);
+    return Math.ceil((dateObj - today) / (86400000));
+}
 
-    const hNodes = AppState.locationStructure;
 
-    if (levelChanged === 'house') {
-        // Populate Houses
-        const currentHouse = form.house.value;
+// --- ADD ITEM FORM ---
+function initAddForm() {
+    form.category.innerHTML = '';
+    AppState.categories.forEach(c => form.category.add(new Option(c, c)));
+
+    updateHierarchySelects('house');
+
+    // Auto-fill opened date if checked
+    form.isOpened.addEventListener('change', () => {
+        if (form.isOpened.checked) {
+            form.openedMeta.classList.remove('hidden');
+            if (!form.openedDate.value) {
+                form.openedDate.valueAsDate = new Date();
+            }
+        } else {
+            form.openedMeta.classList.add('hidden');
+        }
+    });
+
+    // Add Hierarchy Logic (Same as before but ensures refresh on tab switch)
+    form.house.onchange = () => updateHierarchySelects('house');
+    form.room.onchange = () => updateHierarchySelects('room');
+}
+
+function updateHierarchySelects(level) {
+    const struct = AppState.locationStructure;
+
+    if (level === 'house') {
+        const cur = form.house.value;
         form.house.innerHTML = '<option value="">Select House...</option>';
-        Object.keys(hNodes).sort().forEach(h => {
-            form.house.add(new Option(h, h));
-        });
-        if (currentHouse && hNodes[currentHouse]) form.house.value = currentHouse;
+        Object.keys(struct).sort().forEach(h => form.house.add(new Option(h, h)));
+        if (cur && struct[cur]) form.house.value = cur;
 
-        // Reset dependent
         form.room.innerHTML = '<option value="">Select Room...</option>';
         form.room.disabled = true;
         form.storage.innerHTML = '<option value="">Select Storage...</option>';
@@ -340,183 +352,235 @@ function updateHierarchySelects(levelChanged) {
 
         if (form.house.value) updateHierarchySelects('room');
     }
-    else if (levelChanged === 'room') {
+    if (level === 'room') {
         const h = form.house.value;
-        if (!h || !hNodes[h]) return;
-
-        const currentRoom = form.room.value;
+        if (!h) return;
+        const cur = form.room.value;
         form.room.innerHTML = '<option value="">Select Room...</option>';
-        // Keys of house object are rooms
-        Object.keys(hNodes[h]).sort().forEach(r => {
-            form.room.add(new Option(r, r));
-        });
         form.room.disabled = false;
-        if (currentRoom && hNodes[h][currentRoom]) form.room.value = currentRoom;
+        Object.keys(struct[h]).sort().forEach(r => form.room.add(new Option(r, r)));
+        if (cur && struct[h][cur]) form.room.value = cur;
 
-        // Reset dependent
         form.storage.innerHTML = '<option value="">Select Storage...</option>';
         form.storage.disabled = true;
 
         if (form.room.value) updateHierarchySelects('storage');
     }
-    else if (levelChanged === 'storage') {
+    if (level === 'storage') {
         const h = form.house.value;
         const r = form.room.value;
-        if (!h || !r || !hNodes[h][r]) return;
-
-        const currentStorage = form.storage.value;
+        if (!h || !r) return;
+        const cur = form.storage.value;
         form.storage.innerHTML = '<option value="">Select Storage...</option>';
-        hNodes[h][r].sort().forEach(s => {
-            form.storage.add(new Option(s, s));
-        });
         form.storage.disabled = false;
-        if (currentStorage) form.storage.value = currentStorage;
+        struct[h][r].sort().forEach(s => form.storage.add(new Option(s, s)));
+        if (cur) form.storage.value = cur;
     }
 }
 
-function setFormLocation(locObj) {
-    if (!locObj) return;
-    // We must ensure they exist in structure first? 
-    // They should if currentLocation was set validly.
-    updateLocationStructure(locObj.house, locObj.room, locObj.storage);
-
-    form.house.value = locObj.house || "";
-    updateHierarchySelects('house'); // Refreshes rooms
-
-    form.room.value = locObj.room || "";
-    updateHierarchySelects('room'); // Refreshes storage
-
-    form.storage.value = locObj.storage || "";
-}
-
 function setupForm() {
-    // Add Buttons
-    form.btnAddCat.addEventListener('click', () => {
+    // Buttons for Adding Attributes (Category, House) - Simplified for brevity, assume similar to before
+    form.btnAddCat.onclick = () => {
         const n = prompt("New Category:");
-        if (n && !AppState.categories.includes(n)) {
-            AppState.categories.push(n);
-            AppState.categories.sort();
-            Storage.save();
-            initAddForm(); // refresh list
-            form.category.value = n;
-        }
-    });
+        if (n) { AppState.categories.push(n); Storage.save(); initAddForm(); form.category.value = n; }
+    };
 
-    form.btnAddHouse.addEventListener('click', () => {
-        const n = prompt("New House:");
-        if (n) {
-            updateLocationStructure(n);
-            form.house.value = n;
-            updateHierarchySelects('house');
-        }
-    });
-
-    form.btnAddRoom.addEventListener('click', () => {
-        if (!form.house.value) return alert("Select House first");
-        const n = prompt("New Room:");
-        if (n) {
-            updateLocationStructure(form.house.value, n);
-            form.room.value = n;
-            updateHierarchySelects('room');
-        }
-    });
-
-    form.btnAddStorage.addEventListener('click', () => {
-        if (!form.room.value) return alert("Select Room first");
-        const n = prompt("New Storage:");
-        if (n) {
-            updateLocationStructure(form.house.value, form.room.value, n);
-            form.storage.value = n;
-            updateHierarchySelects('storage'); // populates list
-        }
-    });
-
-    // Select Listeners
-    form.house.addEventListener('change', () => updateHierarchySelects('house'));
-    form.room.addEventListener('change', () => updateHierarchySelects('room'));
-    form.storage.addEventListener('change', () => updateHierarchySelects('storage')); // no dependents
-
-    // Submit
+    // Form Submit
     document.getElementById('add-item-form').addEventListener('submit', (e) => {
         e.preventDefault();
-        if (!form.house.value || !form.room.value || !form.storage.value) {
-            alert("Please select full location");
-            return;
-        }
 
-        const loc = {
-            house: form.house.value,
-            room: form.room.value,
-            storage: form.storage.value
-        };
+        const loc = { house: form.house.value, room: form.room.value, storage: form.storage.value };
+        if (!loc.house || !loc.room || !loc.storage) return alert("Incomplete Location");
 
         const newItem = {
             id: Date.now().toString(),
             barcode: form.barcode.value.trim(),
             name: form.name.value.trim(),
             category: form.category.value,
-            location: loc,
+            quantity: parseInt(form.quantity.value) || 1,
+            isOpened: form.isOpened.checked,
+            openedDate: form.isOpened.checked ? form.openedDate.value : null,
+            shelfLife: form.isOpened.checked ? form.shelfLife.value : null,
             expiry: form.expiry.value,
+            location: loc,
             createdAt: new Date().toISOString()
         };
 
         AppState.items.push(newItem);
         Storage.save();
-
-        // Reset fields but keep location
-        form.name.value = '';
-        form.barcode.value = '';
-        form.expiry.value = '';
-
-        alert("Item Added!");
+        alert("Item saved!");
+        form.name.value = ''; form.barcode.value = '';
     });
 }
 
 
-// --- LOCATION VIEW LOGIC ---
-function updateLocationView() {
-    const c = AppState.currentLocation;
-    locDisp.house.textContent = c ? c.house : '-';
-    locDisp.room.textContent = c ? c.room : '-';
-    locDisp.storage.textContent = c ? c.storage : '-';
+// --- LOCATION TREE & CRUD ---
+function setupLocationsUI() {
+    btnAddRoot.onclick = () => {
+        const n = prompt("New House Name:");
+        if (n && !AppState.locationStructure[n]) {
+            AppState.locationStructure[n] = {};
+            Storage.save();
+            renderLocationTree();
+        }
+    };
 }
 
-// Reset Context
-locDisp.btnReset.addEventListener('click', () => {
-    AppState.currentLocation = null;
+function renderLocationTree() {
+    locationTreeContainer.innerHTML = '';
+    const struct = AppState.locationStructure;
+
+    Object.keys(struct).sort().forEach(house => {
+        const hNode = createTreeNode('house', house, () => deleteNode('house', house), () => renameNode('house', house));
+
+        // Rooms
+        const rooms = struct[house];
+        Object.keys(rooms).sort().forEach(room => {
+            const rNode = createTreeNode('room', room, () => deleteNode('room', room, house), () => renameNode('room', room, house));
+
+            // Storages
+            rooms[room].sort().forEach(storage => {
+                const sNode = createTreeNode('storage', storage, () => deleteNode('storage', storage, house, room), () => renameNode('storage', storage, house, room));
+                rNode.appendChild(sNode);
+            });
+
+            // Add Storage Btn
+            const addS = document.createElement('button');
+            addS.textContent = "+ Storage";
+            addS.className = "text-btn small";
+            addS.style.marginLeft = "24px";
+            addS.onclick = () => {
+                const n = prompt("New Storage in " + room);
+                if (n) {
+                    if (!rooms[room].includes(n)) rooms[room].push(n);
+                    Storage.save(); renderLocationTree();
+                }
+            };
+            rNode.appendChild(addS);
+
+            hNode.appendChild(rNode);
+        });
+
+        // Add Room Btn
+        const addR = document.createElement('button');
+        addR.textContent = "+ Room";
+        addR.className = "text-btn small";
+        addR.style.marginLeft = "12px";
+        addR.onclick = () => {
+            const n = prompt("New Room in " + house);
+            if (n && !struct[house][n]) {
+                struct[house][n] = [];
+                Storage.save(); renderLocationTree();
+            }
+        };
+        hNode.appendChild(addR);
+
+        locationTreeContainer.appendChild(hNode);
+    });
+}
+
+function createTreeNode(type, name, deleteFn, renameFn) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'tree-node';
+
+    const header = document.createElement('div');
+    header.className = `tree-header ${type}`;
+    header.innerHTML = `<span>${escapeHtml(name)}</span>`;
+
+    const actions = document.createElement('div');
+    actions.className = 'tree-actions';
+
+    const btnRen = document.createElement('button');
+    btnRen.textContent = '✏️';
+    btnRen.onclick = renameFn;
+
+    const btnDel = document.createElement('button');
+    btnDel.textContent = '🗑️';
+    btnDel.className = 'del';
+    btnDel.onclick = deleteFn;
+
+    actions.append(btnRen, btnDel);
+    header.appendChild(actions);
+    wrapper.appendChild(header);
+    return wrapper;
+}
+
+function deleteNode(type, name, house, room) {
+    // Check constraints: Are there items here?
+    const hasItems = AppState.items.some(i => {
+        if (type === 'house') return i.location.house === name;
+        if (type === 'room') return i.location.house === house && i.location.room === name;
+        if (type === 'storage') return i.location.house === house && i.location.room === room && i.location.storage === name;
+        return false;
+    });
+
+    if (hasItems) return alert("Cannot delete: Items exist in this location.");
+
+    if (confirm(`Delete ${type} "${name}"?`)) {
+        if (type === 'house') delete AppState.locationStructure[name];
+        if (type === 'room') delete AppState.locationStructure[house][name];
+        if (type === 'storage') {
+            const idx = AppState.locationStructure[house][room].indexOf(name);
+            if (idx > -1) AppState.locationStructure[house][room].splice(idx, 1);
+        }
+        Storage.save();
+        renderLocationTree();
+    }
+}
+
+function renameNode(type, oldName, house, room) {
+    const newName = prompt("Rename to:", oldName);
+    if (!newName || newName === oldName) return;
+
+    // Update Structure
+    if (type === 'house') {
+        AppState.locationStructure[newName] = AppState.locationStructure[oldName];
+        delete AppState.locationStructure[oldName];
+    }
+    if (type === 'room') {
+        AppState.locationStructure[house][newName] = AppState.locationStructure[house][oldName];
+        delete AppState.locationStructure[house][oldName];
+    }
+    if (type === 'storage') {
+        const arr = AppState.locationStructure[house][room];
+        arr[arr.indexOf(oldName)] = newName;
+    }
+
+    // Update Items (Migration)
+    AppState.items.forEach(i => {
+        if (type === 'house' && i.location.house === oldName) i.location.house = newName;
+        if (type === 'room' && i.location.house === house && i.location.room === oldName) i.location.room = newName;
+        if (type === 'storage' && i.location.house === house && i.location.room === room && i.location.storage === oldName) i.location.storage = newName;
+    });
+
     Storage.save();
-    updateLocationView();
-});
+    renderLocationTree();
+}
 
 
-// --- SCANNER & AUTO-FILL ---
+// --- SMART SCANNER ---
 function setupScannerUI() {
-    form.btnScanBarcode.addEventListener('click', () => startScanning('barcode'));
-    form.btnScanLocation.addEventListener('click', () => startScanning('loc-input')); // For form fill
-    locDisp.btnScan.addEventListener('click', () => startScanning('loc-context')); // For context setting
-
-    btnCloseScanner.addEventListener('click', stopScanning);
+    form.btnScanBarcode.onclick = () => startScanning('barcode');
+    form.btnScanLocation.onclick = () => startScanning('loc-form');
+    btnCloseScanner.onclick = stopScanning;
 }
 
 function startScanning(target) {
-    if (AppState.isScanning) return; // Prevent double init
+    if (AppState.isScanning) return;
     AppState.isScanning = true;
     AppState.scannerTarget = target;
 
     scannerOverlay.classList.remove('hidden');
-    scannerStatus.textContent = "Starting Camera...";
+    scannerStatus.textContent = "Checking Camera...";
 
-    if (!AppState.html5QrCode) {
-        AppState.html5QrCode = new Html5Qrcode("reader");
-    }
+    if (!AppState.html5QrCode) AppState.html5QrCode = new Html5Qrcode("reader");
 
     AppState.html5QrCode.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 250, height: 250 } },
-        (text) => handleScan(text)
+        (text) => handleSmartScan(text)
     ).catch(err => {
-        console.error(err);
-        alert("Camera failed: " + err);
+        alert("Camera Error: " + err);
         stopScanning();
     });
 }
@@ -527,9 +591,7 @@ function stopScanning() {
             AppState.html5QrCode.clear();
             scannerOverlay.classList.add('hidden');
             AppState.isScanning = false;
-        }).catch(err => {
-            console.error("Stop failed", err);
-            // Force close UI anyway
+        }).catch(() => {
             scannerOverlay.classList.add('hidden');
             AppState.isScanning = false;
         });
@@ -539,51 +601,57 @@ function stopScanning() {
     }
 }
 
-function handleScan(text) {
+function handleSmartScan(text) {
     if (navigator.vibrate) navigator.vibrate(200);
     stopScanning();
 
-    const mode = AppState.scannerTarget;
-
-    if (mode === 'barcode') {
+    // 1. If triggered from "Add Item" fields, simple behavior
+    if (AppState.scannerTarget === 'barcode') {
         form.barcode.value = text;
-
-        // Logic Enhancement: Auto-fill from History
+        // Auto-fill logic
         const existing = AppState.items.find(i => i.barcode === text);
-        if (existing) {
-            form.name.value = existing.name;
-            form.category.value = existing.category;
-            alert(`Found "${existing.name}" in history!`);
+        if (existing) { form.name.value = existing.name; form.category.value = existing.category; }
+        return;
+    }
+    if (AppState.scannerTarget === 'loc-form') {
+        tryParseLocation(text, (loc) => {
+            // Fill form
+            form.house.value = loc.house; updateHierarchySelects('house');
+            form.room.value = loc.room; updateHierarchySelects('room');
+            form.storage.value = loc.storage;
+        });
+        return;
+    }
+
+    // 2. "Smart Scan" from Header (Determine context vs item)
+    if (AppState.scannerTarget === 'smart-scan') {
+        if (text.includes(' > ')) {
+            // Likely Location
+            tryParseLocation(text, (loc) => {
+                AppState.activeContext = loc;
+                renderInventory();
+                alert(`Context set to ${loc.house} > ...`);
+            });
+        } else {
+            // Assume Barcode -> Search
+            searchInput.value = text;
+            renderInventory(); // Filters by text
         }
     }
-    else if (mode === 'loc-input' || mode === 'loc-context') {
-        // Parse "House > Room > Storage"
-        // If users generated QR with old tool, it's "Location Name"
-        // We need to support splitting by " > "
-        const parts = text.split(' > ');
-        if (parts.length === 3) {
-            const locObj = { house: parts[0], room: parts[1], storage: parts[2] };
+}
 
-            // Ensure it exists
-            updateLocationStructure(locObj.house, locObj.room, locObj.storage);
-
-            if (mode === 'loc-input') {
-                setFormLocation(locObj);
-            } else {
-                AppState.currentLocation = locObj;
-                Storage.save();
-                updateLocationView();
-                alert(`Context set to: ${text}`);
-            }
-        } else {
-            alert("Invalid Location QR format. Must be 'House > Room > Storage'");
-        }
+function tryParseLocation(text, callback) {
+    const parts = text.split(' > ');
+    if (parts.length === 3) {
+        callback({ house: parts[0], room: parts[1], storage: parts[2] });
+    } else {
+        alert("Not a valid Location QR (House > Room > Storage)");
     }
 }
 
 function escapeHtml(text) {
     if (!text) return '';
-    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return text.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 document.addEventListener('DOMContentLoaded', init);
