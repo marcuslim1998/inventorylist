@@ -1,33 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Inventory</title>
-    
+
     <!-- PWA / Mobile Capability -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="format-detection" content="telephone=no">
     <meta name="theme-color" content="#ffffff">
-    
+
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="style.css">
-    <link rel="apple-touch-icon" href="icon-192.png"> <!-- Placeholder for icon -->
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <!-- QR Scanner Library -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
+
 <body>
 
     <!-- Top Navigation / Header -->
     <header class="app-header">
         <h1 id="page-title">Inventory</h1>
         <div class="header-actions">
-           <!-- Dynamic actions like 'Scan' or 'Filter' can go here -->
+            <!-- Dynamic actions like 'Scan' or 'Filter' can go here -->
         </div>
     </header>
 
     <!-- Main Content Area -->
     <main id="app-content">
-        
+
         <!-- VIEW: Inventory List -->
         <section id="view-inventory" class="view active">
             <div class="search-bar">
@@ -42,11 +48,17 @@
                     </svg>
                 </button>
             </div>
-            
+
             <div class="filter-chips">
                 <button class="chip active" data-sort="location">Location</button>
                 <button class="chip" data-sort="expiry">Expiry</button>
                 <button class="chip" data-sort="category">Category</button>
+            </div>
+
+            <!-- Current Location Indicator (Inventory View) -->
+            <div id="current-location-banner" class="location-banner">
+                <span class="icon">📍</span>
+                <span id="banner-location-text">All Locations</span>
             </div>
 
             <div id="inventory-list" class="item-list">
@@ -62,7 +74,7 @@
         <section id="view-add-item" class="view">
             <form id="add-item-form">
                 <div class="form-group">
-                    <label for="item-barcode">Barcode</label>
+                    <label for="item-barcode">Barcode (Optional)</label>
                     <div class="input-row">
                         <input type="text" id="item-barcode" placeholder="Scan or type...">
                         <button type="button" id="btn-scan-input" class="icon-btn secondary">Scan</button>
@@ -76,14 +88,21 @@
 
                 <div class="form-group">
                     <label for="item-category">Category</label>
-                    <input type="text" id="item-category" placeholder="e.g., Pantry, Office">
+                    <div class="input-row">
+                        <select id="item-category">
+                            <!-- Populated by JS -->
+                        </select>
+                        <button type="button" id="btn-add-category" class="icon-btn secondary">+</button>
+                    </div>
                 </div>
 
                 <div class="form-group">
                     <label for="item-location">Location</label>
                     <div class="input-row">
-                        <input type="text" id="item-location" required placeholder="Scan location QR...">
-                        <button type="button" id="btn-scan-location" class="icon-btn secondary">Loc</button>
+                        <select id="item-location">
+                            <!-- Populated by JS -->
+                        </select>
+                        <button type="button" id="btn-scan-location-input" class="icon-btn secondary">Scan</button>
                     </div>
                 </div>
 
@@ -99,13 +118,33 @@
             </form>
         </section>
 
+        <!-- VIEW: Locations Management -->
+        <section id="view-locations" class="view">
+            <div class="location-status-card">
+                <h3>📍 Current Location</h3>
+                <p id="location-display-lg" class="highlight-text">Select or Scan...</p>
+                <div class="action-row">
+                    <button id="btn-scan-location-tab" class="btn-secondary-action">Scan QR</button>
+                    <button id="btn-manual-location-tab" class="btn-secondary-action">Set Manually</button>
+                </div>
+            </div>
+
+            <div class="section-header">
+                <h3>Saved Locations</h3>
+                <button id="btn-add-location" class="icon-btn">Add New</button>
+            </div>
+
+            <ul id="location-list" class="simple-list">
+                <!-- Location items -->
+            </ul>
+        </section>
+
         <!-- VIEW: Scanner Overlay (Hidden by default) -->
         <div id="scanner-overlay" class="overlay hidden">
             <div class="scanner-container">
-                <video id="scanner-video" playsinline muted autoplay></video>
-                <div class="scanner-guide"></div>
+                <div id="reader"></div> <!-- html5-qrcode target -->
                 <button id="btn-close-scanner" class="btn-float-close">X</button>
-                <p id="scanner-status">Point camera at barcode...</p>
+                <p id="scanner-status">Point camera at code...</p>
             </div>
         </div>
 
@@ -121,11 +160,12 @@
             <span class="icon">+</span>
         </button>
         <button class="nav-item" data-target="view-locations"> <!-- Future settings/locations view -->
-             <span class="icon">📍</span>
-             <span class="label">Locs</span>
+            <span class="icon">📍</span>
+            <span class="label">Locs</span>
         </button>
     </nav>
 
     <script src="app.js"></script>
 </body>
+
 </html>

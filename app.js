@@ -1,50 +1,76 @@
 /**
- * Inventory Management Logic
- * Handles state, storage, UI rendering, and scanner integration.
+ * Inventory Management Logic (Refined)
+ * Uses html5-qrcode for scanning.
+ * Manages dynamic Categories and Locations.
  */
 
 // --- STATE MANAGEMENT ---
 const AppState = {
     items: [],
-    currentLocation: '',
-    sortBy: 'location', // location | expiry | category
+    categories: ['General', 'Pantry', 'Office', 'Storage'],
+    locations: ['Home > Living Room', 'Home > Kitchen', 'Office > Desk'], // Examples
+    currentLocation: '', // The "active" location for context
+    sortBy: 'location',
     isScanning: false,
-    scannerTarget: null // 'item' | 'location'
+    scannerTarget: null, // 'barcode' | 'location'
+    html5QrCode: null
 };
 
 // --- STORAGE ---
 const Storage = {
-    KEY: 'inventory_data_v1',
+    KEY_ITEMS: 'inv_items_v2',
+    KEY_CATS: 'inv_cats_v1',
+    KEY_LOCS: 'inv_locs_v1',
+    KEY_CURR_LOC: 'inv_curr_loc_v1',
+
     save: () => {
-        localStorage.setItem(Storage.KEY, JSON.stringify(AppState.items));
+        localStorage.setItem(Storage.KEY_ITEMS, JSON.stringify(AppState.items));
+        localStorage.setItem(Storage.KEY_CATS, JSON.stringify(AppState.categories));
+        localStorage.setItem(Storage.KEY_LOCS, JSON.stringify(AppState.locations));
+        localStorage.setItem(Storage.KEY_CURR_LOC, AppState.currentLocation);
     },
     load: () => {
-        const data = localStorage.getItem(Storage.KEY);
-        if (data) {
-            AppState.items = JSON.parse(data);
-        }
+        const i = localStorage.getItem(Storage.KEY_ITEMS);
+        const c = localStorage.getItem(Storage.KEY_CATS);
+        const l = localStorage.getItem(Storage.KEY_LOCS);
+        const cl = localStorage.getItem(Storage.KEY_CURR_LOC);
+
+        if (i) AppState.items = JSON.parse(i);
+        if (c) AppState.categories = JSON.parse(c);
+        if (l) AppState.locations = JSON.parse(l);
+        if (cl) AppState.currentLocation = cl;
+
+        // Ensure defaults if empty
+        if (AppState.categories.length === 0) AppState.categories = ['General'];
+        if (AppState.locations.length === 0) AppState.locations = ['Default'];
     }
 };
 
 // --- DOM ELEMENTS ---
 const viewInventory = document.getElementById('view-inventory');
 const viewAddItem = document.getElementById('view-add-item');
+const viewLocations = document.getElementById('view-locations');
 const navItems = document.querySelectorAll('.nav-item');
+
 const inventoryList = document.getElementById('inventory-list');
 const searchInput = document.getElementById('inventory-search');
 const sortChips = document.querySelectorAll('.chip');
+const bannerLocationText = document.getElementById('banner-location-text');
 
-// Form Elements
+// Form
 const addItemForm = document.getElementById('add-item-form');
-const inputBarcode = document.getElementById('item-barcode'); // Scan target
-const inputLocation = document.getElementById('item-location'); // Scan target
+const inputBarcode = document.getElementById('item-barcode');
+const selectCategory = document.getElementById('item-category');
+const selectLocation = document.getElementById('item-location');
 const inputName = document.getElementById('item-name');
-const inputCategory = document.getElementById('item-category');
 const inputExpiry = document.getElementById('item-expiry');
 
-// Scanner Elements
+// Location View
+const locationDisplayLg = document.getElementById('location-display-lg');
+const locationList = document.getElementById('location-list');
+
+// Scanner
 const scannerOverlay = document.getElementById('scanner-overlay');
-const scannerVideo = document.getElementById('scanner-video');
 const btnCloseScanner = document.getElementById('btn-close-scanner');
 const scannerStatus = document.getElementById('scanner-status');
 
@@ -54,12 +80,10 @@ function init() {
     setupNavigation();
     setupForm();
     setupScanner();
+    setupLocationsUI();
+
     renderInventory();
-    
-    // Set default date for expiry input to today + 30 days (optional UX polish)
-    // const today = new Date();
-    // today.setDate(today.getDate() + 30);
-    // inputExpiry.valueAsDate = today;
+    updateLocationDisplays();
 }
 
 // --- NAVIGATION ---
@@ -69,75 +93,136 @@ function setupNavigation() {
             const targetId = btn.getAttribute('data-target') || btn.closest('.nav-item').getAttribute('data-target');
             if (targetId) {
                 switchView(targetId);
-                updateNavState(targetId);
             }
         });
     });
 
     document.getElementById('btn-cancel-add').addEventListener('click', () => {
         switchView('view-inventory');
-        updateNavState('view-inventory');
     });
 }
 
 function switchView(viewId) {
     document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
     document.getElementById(viewId).classList.add('active');
-    
-    // Reset form if leaving add item view
-    if (viewId === 'view-inventory') {
-        renderInventory();
-    }
-}
 
-function updateNavState(activeTargetId) {
     navItems.forEach(btn => {
         const target = btn.getAttribute('data-target');
-        if (target === activeTargetId) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
+        if (target === viewId) btn.classList.add('active');
+        else btn.classList.remove('active');
+    });
+
+    if (viewId === 'view-inventory') renderInventory();
+    if (viewId === 'view-add-item') populateSelects();
+    if (viewId === 'view-locations') renderLocationList();
+}
+
+
+// --- DATA & UI LOGIC ---
+
+function ensureCategory(cat) {
+    if (!cat) return;
+    if (!AppState.categories.includes(cat)) {
+        AppState.categories.push(cat);
+        AppState.categories.sort();
+        Storage.save();
+    }
+}
+
+function ensureLocation(loc) {
+    if (!loc) return;
+    if (!AppState.locations.includes(loc)) {
+        AppState.locations.push(loc);
+        AppState.locations.sort(); // Hierarchy sort works well with strings
+        Storage.save();
+    }
+}
+
+function populateSelects() {
+    // Categories
+    selectCategory.innerHTML = '';
+    AppState.categories.forEach(c => {
+        const op = document.createElement('option');
+        op.value = c;
+        op.textContent = c;
+        selectCategory.appendChild(op);
+    });
+
+    // Locations
+    selectLocation.innerHTML = '';
+    AppState.locations.forEach(l => {
+        const op = document.createElement('option');
+        op.value = l;
+        op.textContent = l;
+        selectLocation.appendChild(op);
+    });
+
+    // Set default location to current active if exists
+    if (AppState.currentLocation && AppState.locations.includes(AppState.currentLocation)) {
+        selectLocation.value = AppState.currentLocation;
+    }
+}
+
+function updateLocationDisplays() {
+    const loc = AppState.currentLocation || "None Selected";
+    bannerLocationText.textContent = loc === "None Selected" ? "All Locations" : loc; // Filter logic?
+    // Actually request says: 📍 Current Location: Home > Kitchen...
+    // The inventory list might basically be showing items AT this location OR all items if generic. 
+    // Let's assume the Location Filter applies.
+
+    locationDisplayLg.textContent = loc;
+}
+
+
+// Add Item Form
+function setupForm() {
+    // Add Category Button
+    document.getElementById('btn-add-category').addEventListener('click', () => {
+        const newCat = prompt("Enter new category name:");
+        if (newCat) {
+            ensureCategory(newCat.trim());
+            populateSelects();
+            selectCategory.value = newCat.trim();
         }
     });
-}
 
+    // Add Location Button (on form) - wait, scanned location auto adds. 
+    // Manual? The select has existing. If they want to create new while adding item?
+    // Maybe best handled in Locations tab, but we can do a prompt.
+    // Let's stick to: Use dropdown OR Scanning adds new.
 
-// --- INVENTORY LOGIC ---
-function addItem(item) {
-    AppState.items.push(item);
-    Storage.save();
-    renderInventory();
-    
-    // Reset form fields but keep location if desirable (often useful in batched tasks)
-    // We'll reset everything for cleanliness as per "New items added after scanning inherit THIS location" logic implies persistent location state
-    const lastLocation = item.location;
-    addItemForm.reset();
-    if (lastLocation) {
-        inputLocation.value = lastLocation; // Inherit location
-    }
-    
-    switchView('view-inventory');
-    updateNavState('view-inventory');
-}
-
-function setupForm() {
     addItemForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        
+
+        const loc = selectLocation.value;
+        const cat = selectCategory.value;
+
         const newItem = {
-            id: Date.now().toString(), // Simple ID
+            id: Date.now().toString(),
             barcode: inputBarcode.value.trim(),
             name: inputName.value.trim(),
-            category: inputCategory.value.trim(),
-            location: inputLocation.value.trim(),
+            category: cat,
+            location: loc,
             expiry: inputExpiry.value,
             createdAt: new Date().toISOString()
         };
-        
-        addItem(newItem);
+
+        AppState.items.push(newItem);
+        Storage.save();
+
+        // Reset form but keep location
+        addItemForm.reset();
+        selectLocation.value = loc; // Persist last location for rapid entry
+        selectCategory.value = cat; // Persist last category too? Maybe.
+
+        // Feedback
+        alert("Item saved!");
+        // switchView('view-inventory'); // OR stay to add more? "Rapid entry" usually implies stay.
+        // User asked for "Manual item entry must always work". keeping it ready for next item is good.
     });
 
-    // Filtering chips
+    // Search & Sort
+    searchInput.addEventListener('input', renderInventory);
     sortChips.forEach(chip => {
         chip.addEventListener('click', () => {
             sortChips.forEach(c => c.classList.remove('active'));
@@ -146,28 +231,35 @@ function setupForm() {
             renderInventory();
         });
     });
-
-    // Search
-    searchInput.addEventListener('input', renderInventory);
 }
 
 function renderInventory() {
     inventoryList.innerHTML = '';
-    
+
     let filtered = AppState.items.filter(item => {
-        if (!searchInput.value) return true;
+        // Search Filter
         const term = searchInput.value.toLowerCase();
-        return item.name.toLowerCase().includes(term) || 
-               item.category.toLowerCase().includes(term) ||
-               item.location.toLowerCase().includes(term);
+        const matchesTerm = !term ||
+            item.name.toLowerCase().includes(term) ||
+            item.barcode.includes(term) ||
+            item.category.toLowerCase().includes(term);
+
+        // Location Context Filter (Optional: Should showing "Current Location" filter the list?)
+        // If the user sets "Current Location", it implies they are working THERE.
+        // But maybe they want to see everything.
+        // Let's use the Chip "Location" to sort, but maybe we should filter by AppState.currentLocation if strict?
+        // User didn't strictly say "Hide items not in current location", but "Scanning location sets current location".
+        // Let's leave it as global list for now, but sort by location makes sense.
+
+        return matchesTerm;
     });
-    
-    // Sorting
+
+    // Sort
     filtered.sort((a, b) => {
-        switch(AppState.sortBy) {
+        switch (AppState.sortBy) {
             case 'location': return a.location.localeCompare(b.location);
             case 'category': return a.category.localeCompare(b.category);
-            case 'expiry': 
+            case 'expiry':
                 if (!a.expiry) return 1;
                 if (!b.expiry) return -1;
                 return new Date(a.expiry) - new Date(b.expiry);
@@ -176,38 +268,27 @@ function renderInventory() {
     });
 
     if (filtered.length === 0) {
-        inventoryList.innerHTML = `
-            <div class="empty-state">
-                <p>No items found.</p>
-                <p class="sub-text">Add items to get started.</p>
-            </div>`;
+        inventoryList.innerHTML = `<div class="empty-state"><p>No items found.</p></div>`;
         return;
     }
 
     filtered.forEach(item => {
         const card = document.createElement('div');
         card.className = 'inventory-item';
-        
-        // Expiry Logic
+
         let expiryHtml = '';
         if (item.expiry) {
             const daysLeft = getDaysUntil(item.expiry);
             let statusClass = 'ok';
-            let statusText = `${daysLeft} days`;
-            
-            if (daysLeft < 0) {
-                statusClass = 'expired';
-                statusText = 'Expired';
-            } else if (daysLeft <= 7) {
-                statusClass = 'soon';
-            }
+            if (daysLeft < 0) statusClass = 'expired';
+            else if (daysLeft <= 7) statusClass = 'soon';
             expiryHtml = `<span class="expiry-tag ${statusClass}">Exp: ${item.expiry}</span>`;
         }
 
         card.innerHTML = `
             <div class="header">
                 <h3>${escapeHtml(item.name)}</h3>
-                <span style="font-size: 12px; font-weight: 500; color:var(--primary-color)">${escapeHtml(item.location)}</span>
+                <span class="loc-badge">${escapeHtml(item.location)}</span>
             </div>
             <div class="meta">
                 <span>${escapeHtml(item.category)}</span>
@@ -218,130 +299,138 @@ function renderInventory() {
     });
 }
 
-function getDaysUntil(dateStr) {
-    const target = new Date(dateStr);
-    const today = new Date();
-    // Reset time components for accurate day diff
-    target.setHours(0,0,0,0);
-    today.setHours(0,0,0,0);
-    
-    const diffTime = target - today;
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-}
 
-function escapeHtml(text) {
-    if (!text) return '';
-    return text.replace(/&/g, "&amp;")
-               .replace(/</g, "&lt;")
-               .replace(/>/g, "&gt;")
-               .replace(/"/g, "&quot;")
-               .replace(/'/g, "&#039;");
-}
-
-// --- SCANNER LOGIC ---
-// Uses Native BarcodeDetector API if available
-// Note: Limited browser support. In production, a library like html5-qrcode is safer for cross-browser,
-// but requirements asked for native API usage primarily ("Use native browser BarcodeDetector API")
-// and "No external barcode libraries".
-async function setupScanner() {
-    // Buttons to trigger scanner
-    document.getElementById('btn-scan-header').addEventListener('click', () => startScanning('item')); // Generic scan, usually for lookup? or just adds to buffer? Let's just go to Add Item for now or search. 
-    // Requirement says: "User can add inventory items by... b) Scanning product barcode". Implicitly this means scanning triggers Add Item flow or fills it.
-    // Let's make header scan button just go to 'lookup' logic if we had it, but for now we'll route to Add Item -> Scan
-    
-    // Actually, header scan might be for generic lookup. Let's make it quick-add or filter.
-    // For simplicity given constraints: Header button -> Focus Search Bar.
-    // The REAL scanner buttons are in the "Add Item" form.
-    
-    document.getElementById('btn-scan-header').addEventListener('click', () => {
-        // Maybe make this a global "Identify Item" scanner?
-        // For now, let's map it to "Add Item" as that's the primary use case mentioned.
-        switchView('view-add-item');
-        updateNavState('view-add-item');
-        startScanning('barcode'); // Auto start scanning barcode on add view entry? Maybe annoying. Let's let user click scan.
+// --- LOCATION MANAGEMENT UI ---
+function setupLocationsUI() {
+    document.getElementById('btn-add-location').addEventListener('click', () => {
+        const newLoc = prompt("Enter new location (e.g. 'Home > Kitchen'):");
+        if (newLoc) {
+            ensureLocation(newLoc.trim());
+            renderLocationList();
+        }
     });
 
+    document.getElementById('btn-manual-location-tab').addEventListener('click', () => {
+        const newLoc = prompt("Set Current Location name:", AppState.currentLocation);
+        if (newLoc) {
+            setCurrentLocation(newLoc.trim());
+        }
+    });
+
+    document.getElementById('btn-scan-location-tab').addEventListener('click', () => startScanning('location-set'));
+}
+
+function renderLocationList() {
+    locationList.innerHTML = '';
+    AppState.locations.forEach(loc => {
+        const li = document.createElement('li');
+        li.textContent = loc;
+        if (loc === AppState.currentLocation) {
+            li.style.color = 'var(--primary-color)';
+            li.style.fontWeight = 'bold';
+            li.innerHTML += ' (Current)';
+        }
+
+        li.addEventListener('click', () => {
+            setCurrentLocation(loc);
+            alert(`Location set to: ${loc}`);
+        });
+
+        locationList.appendChild(li);
+    });
+}
+
+function setCurrentLocation(loc) {
+    ensureLocation(loc); // Make sure it exists in DB
+    AppState.currentLocation = loc;
+    Storage.save();
+    updateLocationDisplays();
+    renderLocationList();
+}
+
+
+// --- SCANNER LOGIC (Html5Qrcode) ---
+function setupScanner() {
     document.getElementById('btn-scan-input').addEventListener('click', () => startScanning('barcode'));
-    document.getElementById('btn-scan-location').addEventListener('click', () => startScanning('location'));
-    
+    document.getElementById('btn-scan-location-input').addEventListener('click', () => startScanning('location-input'));
     btnCloseScanner.addEventListener('click', stopScanning);
 }
 
-async function startScanning(targetMode) {
-    // Check support
-    if (!('BarcodeDetector' in window)) {
-        alert("Native Barcode Detector not supported on this device/browser. Please type manually.");
-        // Fallback: If we couldn't scan, maybe focus the input?
-        return;
+function startScanning(mode) {
+    AppState.scannerTarget = mode;
+    scannerOverlay.classList.remove('hidden');
+    scannerStatus.textContent = "Starting Camera...";
+
+    // Config
+    // Note: html5-qrcode's 'Html5Qrcode' class allows more control than 'Html5QrcodeScanner'
+    if (!AppState.html5QrCode) {
+        AppState.html5QrCode = new Html5Qrcode("reader");
     }
 
-    AppState.scannerTarget = targetMode;
-    scannerOverlay.classList.remove('hidden');
-    scannerStatus.textContent = targetMode === 'location' ? "Scan Location QR Code" : "Scan Item Barcode";
-    
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { 
-                facingMode: { exact: "environment" } // Rear camera
-            } 
-        });
-        scannerVideo.srcObject = stream;
-        
-        // Start detection loop
-        detectLoop();
-    } catch (err) {
-        console.error("Camera access denied or failed", err);
-        alert("Could not access camera. Ensure permissions are granted.");
+    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+    // Prefer rear camera
+    const cameraConfig = { facingMode: "environment" };
+
+    AppState.html5QrCode.start(
+        cameraConfig,
+        config,
+        (decodedText, decodedResult) => {
+            handleScanSuccess(decodedText);
+        },
+        (errorMessage) => {
+            // parse error, ignore
+        }
+    ).then(() => {
+        scannerStatus.textContent = "Scan now";
+    }).catch(err => {
+        console.error("Scanner Error", err);
+        scannerStatus.textContent = "Error: " + err;
+        alert("Camera failed. Please allow permission.");
         stopScanning();
-    }
+    });
 }
 
 function stopScanning() {
-    scannerOverlay.classList.add('hidden');
-    const stream = scannerVideo.srcObject;
-    if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        scannerVideo.srcObject = null;
+    if (AppState.html5QrCode && AppState.html5QrCode.isScanning) {
+        AppState.html5QrCode.stop().then(() => {
+            scannerOverlay.classList.add('hidden');
+            AppState.html5QrCode.clear();
+        }).catch(err => console.error("Stop failed", err));
+    } else {
+        scannerOverlay.classList.add('hidden');
     }
-    AppState.isScanning = false;
 }
 
-async function detectLoop() {
-    if (scannerOverlay.classList.contains('hidden')) return;
-
-    const barcodeDetector = new BarcodeDetector({
-        formats: ['qr_code', 'ean_13', 'code_128', 'ean_8', 'upc_a'] 
-    });
-
-    try {
-        const barcodes = await barcodeDetector.detect(scannerVideo);
-        if (barcodes.length > 0) {
-            // Found one!
-            const rawValue = barcodes[0].rawValue;
-            handleScanSuccess(rawValue);
-            return; // Stop loop
-        }
-    } catch (e) {
-        // Detection failed this frame, continue
-        // console.warn(e);
-    }
-    
-    requestAnimationFrame(detectLoop);
-}
-
-function handleScanSuccess(value) {
-    // Haptic feedback if available
+function handleScanSuccess(text) {
+    // Haptic
     if (navigator.vibrate) navigator.vibrate(200);
-    
-    stopScanning(); // Stop camera
+    stopScanning();
 
     if (AppState.scannerTarget === 'barcode') {
-        inputBarcode.value = value;
-        // Optional: Auto-lookup name? (Not in requirements/no backend)
-    } else if (AppState.scannerTarget === 'location') {
-        inputLocation.value = value;
+        inputBarcode.value = text;
+    } else if (AppState.scannerTarget === 'location-input') {
+        // Ensure location exists and select it
+        ensureLocation(text);
+        populateSelects(); // refresh dropdown
+        selectLocation.value = text;
+    } else if (AppState.scannerTarget === 'location-set') {
+        setCurrentLocation(text);
+        alert("Location set to: " + text);
     }
 }
 
-// Start app
+// Helpers
+function getDaysUntil(dateStr) {
+    const target = new Date(dateStr);
+    const today = new Date();
+    target.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    return Math.ceil((target - today) / (1000 * 60 * 60 * 24));
+}
+function escapeHtml(text) {
+    if (!text) return '';
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 document.addEventListener('DOMContentLoaded', init);
