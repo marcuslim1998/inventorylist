@@ -413,15 +413,8 @@ function setupForm() {
             return;
         }
 
-        // Category and Location are now OPTIONAL as requested
-        // if (!catVal) {
-        //     alert("Please select a Category.");
-        //     return;
-        // }
-        // if (!loc.house || !loc.room || !loc.storage) {
-        //     alert("Please select a full Location (House, Room, and Storage).");
-        //     return;
-        // }
+        // Category and Location are optional
+        // We save them as empty strings/objects if missing.
 
         const qty = parseInt(form.quantity?.value) || 1;
 
