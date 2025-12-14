@@ -49,17 +49,23 @@
                 </button>
             </div>
 
-            <div class="filter-chips">
-                <button class="chip active" data-sort="location">Location</button>
-                <button class="chip" data-sort="expiry">Expiry</button>
-                <button class="chip" data-sort="category">Category</button>
+            <!-- Advanced Filters -->
+            <div class="filters-container">
+                <div class="filter-tabs">
+                    <button class="filter-tab active" data-filter-mode="all">All</button>
+                    <button class="filter-tab" data-filter-mode="location">By Location</button>
+                    <button class="filter-tab" data-filter-mode="category">By Category</button>
+                </div>
+                <!-- Dynamic Filter Content (e.g. Breadcrumbs or active tags) -->
+                <div id="active-filter-display" class="active-filter-bar hidden">
+                    <span id="filter-context-text"></span>
+                    <button id="btn-clear-filter" class="icon-btn-small">✕</button>
+                </div>
             </div>
 
-            <!-- Current Location Indicator (Inventory View) -->
-            <div id="current-location-banner" class="location-banner">
-                <span class="icon">📍</span>
-                <span id="banner-location-text">All Locations</span>
-            </div>
+            <!-- Location Banner removed in favor of filter tabs/context above, 
+                 but kept hidden or repurposed if needed. 
+                 Let's remove it to clean up as requested "Add top filter tabs" -->
 
             <div id="inventory-list" class="item-list">
                 <!-- Items injected here by JS -->
@@ -97,12 +103,35 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="item-location">Location</label>
+                    <label>Location Hierarchy</label>
+                    <div class="hierarchy-inputs">
+                        <div class="hi-row">
+                            <select id="loc-house" class="hier-select">
+                                <option value="">Select House...</option>
+                            </select>
+                            <button type="button" id="btn-add-house" class="icon-btn secondary">+</button>
+                        </div>
+                        <div class="hi-row">
+                            <select id="loc-room" class="hier-select" disabled>
+                                <option value="">Select Room...</option>
+                            </select>
+                            <button type="button" id="btn-add-room" class="icon-btn secondary">+</button>
+                        </div>
+                        <div class="hi-row">
+                            <select id="loc-storage" class="hier-select" disabled>
+                                <option value="">Select Storage...</option>
+                            </select>
+                            <button type="button" id="btn-add-storage" class="icon-btn secondary">+</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hidden legacy field if needed, or we just use the 3 above -->
+
+                <div class="form-group">
                     <div class="input-row">
-                        <select id="item-location">
-                            <!-- Populated by JS -->
-                        </select>
-                        <button type="button" id="btn-scan-location-input" class="icon-btn secondary">Scan</button>
+                        <button type="button" id="btn-scan-location-input" class="btn-secondary-action full-width">Scan
+                            Location QR</button>
                     </div>
                 </div>
 
@@ -121,11 +150,15 @@
         <!-- VIEW: Locations Management -->
         <section id="view-locations" class="view">
             <div class="location-status-card">
-                <h3>📍 Current Location</h3>
-                <p id="location-display-lg" class="highlight-text">Select or Scan...</p>
+                <h3>📍 Current Context</h3>
+                <div class="hierarchy-display" id="location-display-lg">
+                    <div class="level">House: <span id="disp-house">-</span></div>
+                    <div class="level">Room: <span id="disp-room">-</span></div>
+                    <div class="level">Storage: <span id="disp-storage">-</span></div>
+                </div>
                 <div class="action-row">
                     <button id="btn-scan-location-tab" class="btn-secondary-action">Scan QR</button>
-                    <button id="btn-manual-location-tab" class="btn-secondary-action">Set Manually</button>
+                    <button id="btn-reset-location" class="btn-secondary-action">Reset Context</button>
                 </div>
             </div>
 

@@ -84,6 +84,60 @@ main {
 }
 
 /* Inventory List */
+.filters-container {
+    margin-bottom: 16px;
+}
+
+.filter-tabs {
+    display: flex;
+    background: #e3e3e8;
+    padding: 4px;
+    border-radius: 10px;
+}
+
+.filter-tab {
+    flex: 1;
+    border: none;
+    background: none;
+    padding: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.filter-tab.active {
+    background: white;
+    color: var(--text-primary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.active-filter-bar {
+    background: var(--primary-color);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-top: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.active-filter-bar.hidden {
+    display: none;
+}
+
+.icon-btn-small {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 14px;
+    padding: 4px;
+}
+
 .search-bar {
     display: flex;
     gap: 8px;
@@ -154,10 +208,32 @@ main {
     align-items: center;
 }
 
-.inventory-item h3 {
-    margin: 0;
-    font-size: 17px;
-    font-weight: 600;
+/* Hierarchy Inputs */
+.hierarchy-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: #f9f9fc;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.hi-row {
+    display: flex;
+    gap: 8px;
+}
+
+.full-width {
+    width: 100%;
+}
+
+.inventory-item .barcode {
+    font-family: monospace;
+    font-size: 11px;
+    color: #8e8e93;
+    display: block;
+    margin-top: 2px;
 }
 
 .inventory-item .meta {
@@ -327,6 +403,27 @@ select {
     text-align: center;
     margin-bottom: 24px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Hierarchy Display in Location View */
+.hierarchy-display {
+    text-align: left;
+    background: #f2f2f7;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.hierarchy-display .level {
+    margin-bottom: 4px;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.hierarchy-display .level span {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-left: 8px;
 }
 
 .highlight-text {
