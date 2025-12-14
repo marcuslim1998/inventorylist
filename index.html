@@ -27,7 +27,7 @@
     <header class="app-header">
         <h1 id="page-title">Inventory</h1>
         <div class="header-actions">
-            <!-- Dynamic actions like 'Scan' or 'Filter' can go here -->
+            <!-- Reserved for future dynamic actions -->
         </div>
     </header>
 
@@ -36,6 +36,7 @@
 
         <!-- VIEW: Inventory List -->
         <section id="view-inventory" class="view active">
+            <!-- Search & Scan Bar -->
             <div class="search-bar">
                 <input type="text" id="inventory-search" placeholder="Search items...">
                 <button id="btn-scan-header" class="icon-btn" aria-label="Scan Barcode">
@@ -49,13 +50,10 @@
                 </button>
             </div>
 
-            <!-- Toolbar: Search, Filter Toggle, Sort -->
+            <!-- Toolbar: Filter Toggle -->
             <div class="toolbar-row">
-                <div class="search-wrap">
-                    <input type="text" id="inventory-search" placeholder="Search...">
-                </div>
-                <button id="btn-toggle-filters" class="icon-btn-medium">
-                    <span class="icon">🔽</span> Filter
+                <button id="btn-toggle-filters" class="icon-btn-medium full-width">
+                    <span class="icon">🔽</span> Toggle Filters & Context
                 </button>
             </div>
 
@@ -68,7 +66,7 @@
                         <label><input type="checkbox" name="filter-status" value="soon"> Soon</label>
                     </div>
                 </div>
-                <!-- Location & Category filters will be handled dynamically or via "Smart Scan" context -->
+                <!-- Active Location Context -->
                 <div class="filter-group">
                     <label>Active Context</label>
                     <div id="active-context-display" class="context-pill empty">None</div>
@@ -85,12 +83,9 @@
                 <button class="chip" data-sort="category">Category</button>
             </div>
 
-            <!-- Location Banner removed in favor of filter tabs/context above, 
-                 but kept hidden or repurposed if needed. 
-                 Let's remove it to clean up as requested "Add top filter tabs" -->
-
+            <!-- Items List -->
             <div id="inventory-list" class="item-list">
-                <!-- Items injected here by JS -->
+                <!-- Items injected by JS -->
                 <div class="empty-state">
                     <p>No items found.</p>
                     <p class="sub-text">Tap '+' to add your first item.</p>
@@ -101,6 +96,8 @@
         <!-- VIEW: Add Item -->
         <section id="view-add-item" class="view">
             <form id="add-item-form">
+
+                <!-- Barcode -->
                 <div class="form-group">
                     <label for="item-barcode">Barcode (Optional)</label>
                     <div class="input-row">
@@ -109,6 +106,13 @@
                     </div>
                 </div>
 
+                <!-- Name (Required) -->
+                <div class="form-group">
+                    <label for="item-name">Name</label>
+                    <input type="text" id="item-name" required placeholder="Product name">
+                </div>
+
+                <!-- Quantity -->
                 <div class="form-group two-col">
                     <div>
                         <label for="item-quantity">Quantity</label>
@@ -116,6 +120,7 @@
                     </div>
                 </div>
 
+                <!-- Opened Status & Meta -->
                 <div class="form-group">
                     <label class="checkbox-label">
                         <input type="checkbox" id="item-opened">
@@ -139,6 +144,7 @@
                     </div>
                 </div>
 
+                <!-- Category -->
                 <div class="form-group">
                     <label for="item-category">Category</label>
                     <div class="input-row">
@@ -149,6 +155,7 @@
                     </div>
                 </div>
 
+                <!-- Location Hierarchy -->
                 <div class="form-group">
                     <label>Location Hierarchy</label>
                     <div class="hierarchy-inputs">
@@ -173,8 +180,7 @@
                     </div>
                 </div>
 
-                <!-- Hidden legacy field if needed, or we just use the 3 above -->
-
+                <!-- Location Scan Helper -->
                 <div class="form-group">
                     <div class="input-row">
                         <button type="button" id="btn-scan-location-input" class="btn-secondary-action full-width">Scan
@@ -182,11 +188,13 @@
                     </div>
                 </div>
 
+                <!-- Expiry -->
                 <div class="form-group">
                     <label for="item-expiry">Expiry (Optional)</label>
                     <input type="date" id="item-expiry">
                 </div>
 
+                <!-- Actions -->
                 <div class="form-actions">
                     <button type="button" class="btn-cancel" id="btn-cancel-add">Cancel</button>
                     <button type="submit" class="btn-primary">Save Item</button>
@@ -226,7 +234,7 @@
         <button class="nav-item fab" data-target="view-add-item">
             <span class="icon">+</span>
         </button>
-        <button class="nav-item" data-target="view-locations"> <!-- Future settings/locations view -->
+        <button class="nav-item" data-target="view-locations">
             <span class="icon">📍</span>
             <span class="label">Locs</span>
         </button>
