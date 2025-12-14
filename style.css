@@ -14,6 +14,10 @@
     --spacing-unit: 16px;
 }
 
+.hidden {
+    display: none !important;
+}
+
 * {
     box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;

@@ -317,7 +317,7 @@ function getDaysUntil(dateObj) {
 
 // --- ADD ITEM FORM ---
 function initAddForm() {
-    form.category.innerHTML = '';
+    form.category.innerHTML = '<option value="">Select Category...</option>';
     AppState.categories.forEach(c => form.category.add(new Option(c, c)));
 
     updateHierarchySelects('house');
