@@ -207,9 +207,12 @@ function renderInventory() {
         // 2. Active Context (Location Filter)
         if (AppState.activeContext) {
             const c = AppState.activeContext;
-            if (item.location.house !== c.house) return false;
-            if (c.room && item.location.room !== c.room) return false;
-            if (c.storage && item.location.storage !== c.storage) return false;
+            const loc = item.location || {}; // Handle missing location
+            if (loc.house !== c.house) return false;
+            // Strict or lenient hierarchy? If context has room, item must match.
+            // If item has no room, it doesn't match a Room-specific context.
+            if (c.room && loc.room !== c.room) return false;
+            if (c.storage && loc.storage !== c.storage) return false;
         }
 
         // 3. Status Filters (Expired / Soon)
@@ -227,8 +230,8 @@ function renderInventory() {
     filtered.sort((a, b) => {
         if (AppState.sortBy === 'date') return new Date(b.createdAt) - new Date(a.createdAt); // Newest first
         if (AppState.sortBy === 'location') {
-            const la = `${a.location.house}${a.location.room}${a.location.storage}`;
-            const lb = `${b.location.house}${b.location.room}${b.location.storage}`;
+            const la = a.location ? `${a.location.house}${a.location.room}${a.location.storage}` : 'zzz'; // Push empty to end
+            const lb = b.location ? `${b.location.house}${b.location.room}${b.location.storage}` : 'zzz';
             return la.localeCompare(lb);
         }
         if (AppState.sortBy === 'expiry') {
@@ -275,9 +278,9 @@ function renderInventory() {
                    <small class="barcode">${escapeHtml(item.barcode)}</small>
                 </div>
                 <div style="text-align:right; font-size:11px; color:var(--primary-color)">
-                    <div>${escapeHtml(item.location.house)}</div>
-                    <div>${escapeHtml(item.location.room)}</div>
-                    <div>${escapeHtml(item.location.storage)}</div>
+                    <div>${escapeHtml(item.location?.house || '-')}</div>
+                    <div>${escapeHtml(item.location?.room || '')}</div>
+                    <div>${escapeHtml(item.location?.storage || '')}</div>
                 </div>
             </div>
             <div class="meta">
@@ -409,14 +412,16 @@ function setupForm() {
             form.name.focus();
             return;
         }
-        if (!catVal) {
-            alert("Please select a Category.");
-            return;
-        }
-        if (!loc.house || !loc.room || !loc.storage) {
-            alert("Please select a full Location (House, Room, and Storage).");
-            return;
-        }
+
+        // Category and Location are now OPTIONAL as requested
+        // if (!catVal) {
+        //     alert("Please select a Category.");
+        //     return;
+        // }
+        // if (!loc.house || !loc.room || !loc.storage) {
+        //     alert("Please select a full Location (House, Room, and Storage).");
+        //     return;
+        // }
 
         const qty = parseInt(form.quantity?.value) || 1;
 
