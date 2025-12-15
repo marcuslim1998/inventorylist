@@ -127,19 +127,9 @@ const scannerStatus = document.getElementById('scanner-status');
 const btnCloseScanner = document.getElementById('btn-close-scanner');
 
 
-// --- INITIALIZATION ---
-function init() {
-    Storage.load();
-    setupNavigation();
-    setupInventoryUI();
-    setupForm();
-    setupScannerUI();
-    setupLocationsUI(); // Also re-inits filters
+// Duplicate init removed
+// The correct init is defined above
 
-    renderInventory();
-    renderLocationTree();
-    if (window.feather) feather.replace();
-}
 
 function setupNavigation() {
     navItems.forEach(btn => {
