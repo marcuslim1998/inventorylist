@@ -276,9 +276,17 @@
                         data-feather="printer"></i> Print All Location QRs (Grid)</button>
                 <p style="font-size:12px; color:#666; margin-top:8px;">Generates a printable page with 3x5cm QR cards
                     for all locations.</p>
-            </div>
+                <div style="margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                    <h3 style="color: var(--danger-color);">Danger Zone</h3>
+                    <button id="btn-reset-data" class="btn-cancel"
+                        style="background:#fff; border:1px solid var(--danger-color); color:var(--danger-color); width:100%; font-weight:bold;">
+                        <i data-feather="trash-2"></i> Reset All Data
+                    </button>
+                    <p style="font-size:12px; color:var(--danger-color); margin-top:8px;">Warning: This will delete all
+                        items, locations, and categories permanently.</p>
+                </div>
 
-            <div style="height: 100px;"></div>
+                <div style="height: 100px;"></div>
         </section>
 
         <!-- SEARCH OVERLAY & TOASTS exist... -->

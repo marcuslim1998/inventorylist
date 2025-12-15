@@ -773,6 +773,19 @@ function setupSettingsUI() {
             }
         };
 
+        // 5. Reset Data (Danger Zone)
+        const btnReset = document.getElementById('btn-reset-data');
+        if (btnReset) {
+            btnReset.onclick = () => {
+                if (confirm("⚠️ CRITICAL WARNING ⚠️\n\nAre you sure you want to delete ALL data?\nThis cannot be undone!")) {
+                    if (confirm("Final Confirmation: Delete everything?")) {
+                        localStorage.removeItem('inventory_data');
+                        location.reload();
+                    }
+                }
+            };
+        }
+
     } catch (e) {
         console.error("Error in setupSettingsUI:", e);
         alert("Settings UI Error: " + e.message);
@@ -803,46 +816,55 @@ function renderCategorySettings() {
         li.querySelector('.edit-cat-btn').onclick = () => {
             const newName = prompt("Rename Category:", cat);
             if (newName && newName !== cat) {
+                // Capture Affected Items
+                const affectedIds = AppState.items.filter(i => i.category === cat).map(i => i.id);
+
                 // Update List
                 const idx = AppState.categories.indexOf(cat);
                 if (idx !== -1) AppState.categories[idx] = newName;
                 AppState.categories.sort();
 
                 // Update Items
-                let count = 0;
-                AppState.items.forEach(item => {
-                    if (item.category === cat) {
-                        item.category = newName;
-                        count++;
-                    }
+                affectedIds.forEach(id => {
+                    const item = AppState.items.find(i => i.id === id);
+                    if (item) item.category = newName;
                 });
 
-                Storage.save();
-                renderCategorySettings();
-                populateFilterDropdowns('init');
-                renderInventory(); // Refresh if looking at list
-                alert(`Renamed! Updated ${count} items.`);
-            }
-        };
-
-        // Bind Delete
-        li.querySelector('.del-cat-btn').onclick = () => {
-            if (confirm(`Delete category "${cat}"? Items will become "Uncategorized".`)) {
-                // Remove from list
-                AppState.categories = AppState.categories.filter(c => c !== cat);
-
-                // Update Items
-                AppState.items.forEach(item => {
-                    if (item.category === cat) {
-                        item.category = "Uncategorized";
-                    }
-                });
+                // Undo Action
+                AppState.lastAction = { type: 'catRename', oldVal: cat, newVal: newName, ids: affectedIds };
 
                 Storage.save();
                 renderCategorySettings();
                 populateFilterDropdowns('init');
                 renderInventory();
+
+                showUndoToast(`Renamed to "${newName}"`, performUndo);
             }
+        };
+
+        // Bind Delete
+        li.querySelector('.del-cat-btn').onclick = () => {
+            // Capture Affected Items
+            const affectedIds = AppState.items.filter(i => i.category === cat).map(i => i.id);
+
+            // Remove from list
+            AppState.categories = AppState.categories.filter(c => c !== cat);
+
+            // Update Items
+            affectedIds.forEach(id => {
+                const item = AppState.items.find(i => i.id === id);
+                if (item) item.category = "Uncategorized";
+            });
+
+            // Undo Action
+            AppState.lastAction = { type: 'catDelete', name: cat, ids: affectedIds };
+
+            Storage.save();
+            renderCategorySettings();
+            populateFilterDropdowns('init');
+            renderInventory();
+
+            showUndoToast(`Deleted "${cat}"`, performUndo);
         };
 
         container.appendChild(li);
