@@ -262,6 +262,15 @@
             </div>
 
             <div style="margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                <h3>Manage Categories</h3>
+                <div id="settings-categories-list" class="simple-list">
+                    <!-- Injected by JS -->
+                </div>
+                <button id="btn-settings-add-cat" class="btn-secondary-action full-width" style="margin-top:10px;">+ Add
+                    Category</button>
+            </div>
+
+            <div style="margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 20px;">
                 <h3>Tools</h3>
                 <button id="btn-bulk-print-qr" class="btn-primary" style="background:#444;"><i
                         data-feather="printer"></i> Print All Location QRs (Grid)</button>
@@ -317,15 +326,15 @@
     <!-- Bottom Navigation Bar -->
     <nav class="bottom-nav">
         <button class="nav-item active" data-target="view-inventory">
-            <span class="icon">📦</span>
+            <i data-feather="package"></i>
             <span class="label">Items</span>
         </button>
         <button class="nav-item" data-target="view-locations">
-            <span class="icon">📍</span>
+            <i data-feather="map-pin"></i>
             <span class="label">Location</span>
         </button>
         <button class="nav-item" data-target="view-settings">
-            <span class="icon">⚙️</span>
+            <i data-feather="settings"></i>
             <span class="label">Settings</span>
         </button>
     </nav>

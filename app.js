@@ -760,10 +760,95 @@ function setupSettingsUI() {
             };
         } else console.error("btn-bulk-print-qr missing");
 
+        // 4. Category Management
+        renderCategorySettings();
+        document.getElementById('btn-settings-add-cat').onclick = () => {
+            const n = prompt("New Category Name:");
+            if (n && !AppState.categories.includes(n)) {
+                AppState.categories.push(n);
+                AppState.categories.sort();
+                Storage.save();
+                renderCategorySettings();
+                populateFilterDropdowns('init');
+            }
+        };
+
     } catch (e) {
         console.error("Error in setupSettingsUI:", e);
         alert("Settings UI Error: " + e.message);
     }
+}
+
+function renderCategorySettings() {
+    const container = document.getElementById('settings-categories-list');
+    container.innerHTML = '';
+
+    AppState.categories.forEach(cat => {
+        const li = document.createElement('div');
+        li.className = 'tree-header'; // reuse existing style for consistency
+        li.style.background = 'white';
+        li.style.borderBottom = '1px solid #eee';
+        li.style.display = 'flex';
+        li.style.justifyContent = 'space-between';
+
+        li.innerHTML = `
+            <span>${escapeHtml(cat)}</span>
+            <div class="tree-actions">
+                <button class="edit-cat-btn"><i data-feather="edit-2"></i></button>
+                <button class="del-cat-btn" style="color:var(--danger-color)"><i data-feather="trash-2"></i></button>
+            </div>
+        `;
+
+        // Bind Edit
+        li.querySelector('.edit-cat-btn').onclick = () => {
+            const newName = prompt("Rename Category:", cat);
+            if (newName && newName !== cat) {
+                // Update List
+                const idx = AppState.categories.indexOf(cat);
+                if (idx !== -1) AppState.categories[idx] = newName;
+                AppState.categories.sort();
+
+                // Update Items
+                let count = 0;
+                AppState.items.forEach(item => {
+                    if (item.category === cat) {
+                        item.category = newName;
+                        count++;
+                    }
+                });
+
+                Storage.save();
+                renderCategorySettings();
+                populateFilterDropdowns('init');
+                renderInventory(); // Refresh if looking at list
+                alert(`Renamed! Updated ${count} items.`);
+            }
+        };
+
+        // Bind Delete
+        li.querySelector('.del-cat-btn').onclick = () => {
+            if (confirm(`Delete category "${cat}"? Items will become "Uncategorized".`)) {
+                // Remove from list
+                AppState.categories = AppState.categories.filter(c => c !== cat);
+
+                // Update Items
+                AppState.items.forEach(item => {
+                    if (item.category === cat) {
+                        item.category = "Uncategorized";
+                    }
+                });
+
+                Storage.save();
+                renderCategorySettings();
+                populateFilterDropdowns('init');
+                renderInventory();
+            }
+        };
+
+        container.appendChild(li);
+    });
+
+    if (window.feather) feather.replace();
 }
 
 function renderStats() {

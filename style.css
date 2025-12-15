@@ -627,6 +627,22 @@ select {
     /* Bigger hit target */
     height: 100%;
     justify-content: center;
+    gap: 6px;
+    /* Space between icon and text */
+}
+
+.nav-item svg.feather {
+    width: 28px;
+    height: 28px;
+    stroke-width: 2;
+    transition: transform 0.2s, color 0.2s;
+}
+
+.nav-item.active svg.feather {
+    transform: translateY(-2px);
+    /* Subtle lift */
+    stroke-width: 2.5;
+    /* Bolder when active */
 }
 
 /* FAB Main Add Button */
