@@ -608,61 +608,92 @@ select {
     z-index: 90;
 }
 
-.nav-item {
-    background: none;
+/* FAB Main Add Button */
+.fab-main {
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    color: white;
     border: none;
+    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
     display: flex;
-    flex-direction: column;
+    justify-content: center;
     align-items: center;
-    color: var(--text-secondary);
-    font-size: 10px;
-    padding: 8px;
-    width: 60px;
+    z-index: 95;
+    cursor: pointer;
+    transition: transform 0.1s;
 }
 
-.nav-item.active {
+.fab-main:active {
+    transform: scale(0.95);
+}
+
+.fab-main svg {
+    width: 28px;
+    height: 28px;
+}
+
+/* Bottom Nav Adjustments */
+.bottom-nav {
+    justify-content: space-evenly;
+    /* Spread 3 items evenly */
+}
+
+/* Standardized Filters */
+.filter-section label {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
     color: var(--primary-color);
 }
 
-.nav-item .icon {
-    font-size: 24px;
-    margin-bottom: 2px;
+.three-col-filters select,
+.filter-section select {
+    height: 40px;
+    /* Standardize Height */
+    font-size: 13px;
+    padding: 0 10px;
 }
 
-.nav-item.fab {
-    background: var(--primary-color);
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    color: white;
-    justify-content: center;
-    margin-bottom: 12px;
-    /* Lift up */
-    box-shadow: 0 4px 10px rgba(0, 122, 255, 0.3);
+.chk-row.wrap {
+    gap: 16px;
+    margin-top: 8px;
 }
 
-.nav-item.fab .icon {
-    font-size: 28px;
+/* Compact Inventory Cards */
+.inventory-item {
+    padding: 12px;
+    /* Reduced from 16px */
+    gap: 2px;
+}
+
+.inventory-item .header h3 {
     margin: 0;
+    font-size: 16px;
 }
 
-/* Location View Specifics */
+.inventory-item .meta-row {
+    margin-top: 4px;
+    /* Reduced from 8px */
+}
+
+/* Location / Settings Polish */
 .location-status-card {
-    background: white;
-    padding: 20px;
-    border-radius: var(--border-radius);
-    text-align: center;
-    margin-bottom: 24px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    padding: 16px;
+    /* Reduced from 20px */
+    border: 1px solid var(--border-color);
+    /* Add definition */
+    box-shadow: none;
+    /* Cleaner look */
 }
 
-/* Hierarchy Display in Location View */
 .hierarchy-display {
-    text-align: left;
-    background: #f2f2f7;
-    padding: 16px;
-    border-radius: 8px;
-    margin-bottom: 16px;
+    background: white;
+    border: 1px solid var(--border-color);
 }
 
 .hierarchy-display .level {

@@ -132,6 +132,7 @@ const btnCloseScanner = document.getElementById('btn-close-scanner');
 
 
 function setupNavigation() {
+    // Bottom Nav Items
     navItems.forEach(btn => {
         btn.addEventListener('click', () => {
             const targetId = btn.getAttribute('data-target');
@@ -149,6 +150,21 @@ function setupNavigation() {
             if (targetId === 'view-locations') renderLocationTree();
         });
     });
+
+    // FAB Add Button Logic
+    const fab = document.getElementById('fab-add-item');
+    if (fab) {
+        fab.addEventListener('click', () => {
+            // Deselect all bottom nav
+            navItems.forEach(b => b.classList.remove('active'));
+
+            // Switch View
+            Object.values(views).forEach(v => v.classList.remove('active'));
+            views.addItem.classList.add('active'); // view-add-item
+
+            initAddForm();
+        });
+    }
 }
 
 // --- INVENTORY UI ---

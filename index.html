@@ -305,8 +305,14 @@
     <!-- UNDO TOAST (Fixed Position) -->
     <div id="undo-toast" class="toast hidden">
         <span id="undo-message">Notification</span>
-        <button id="btn-undo" class="text-btn" style="color:#4CAF50; font-weight:bold; margin-left:10px;">UNDO</button>
+        <button id="btn-undo" class="text-btn"
+            style="color:var(--primary-color); font-weight:bold; margin-left:10px; background:white; padding:4px 12px; border-radius:12px;">UNDO</button>
     </div>
+
+    <!-- FAB Add Button -->
+    <button id="fab-add-item" class="fab-main">
+        <i data-feather="plus"></i>
+    </button>
 
     <!-- Bottom Navigation Bar -->
     <nav class="bottom-nav">
@@ -314,12 +320,9 @@
             <span class="icon">📦</span>
             <span class="label">Items</span>
         </button>
-        <button class="nav-item fab" data-target="view-add-item">
-            <span class="icon">+</span>
-        </button>
         <button class="nav-item" data-target="view-locations">
             <span class="icon">📍</span>
-            <span class="label">Locs</span>
+            <span class="label">Location</span>
         </button>
         <button class="nav-item" data-target="view-settings">
             <span class="icon">⚙️</span>
