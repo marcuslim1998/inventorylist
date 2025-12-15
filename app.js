@@ -615,10 +615,45 @@ function renderLocationTree() {
                         roomList.appendChild(storageNode);
                     });
                 }
+
+                // Button: Add Storage
+                const btnAddStorage = document.createElement('button');
+                btnAddStorage.className = 'text-btn small';
+                btnAddStorage.innerHTML = '+ Add Storage';
+                btnAddStorage.style.marginLeft = '12px';
+                btnAddStorage.style.marginTop = '4px';
+                btnAddStorage.onclick = () => {
+                    const s = prompt(`New Storage in ${room}?`);
+                    if (s) {
+                        if (!struct[house][room].includes(s)) {
+                            struct[house][room].push(s);
+                            Storage.save();
+                            renderLocationTree();
+                        }
+                    }
+                };
+                roomList.appendChild(btnAddStorage);
+
                 houseList.appendChild(roomNode);
                 houseList.appendChild(roomList);
             });
         }
+
+        // Button: Add Room
+        const btnAddRoom = document.createElement('button');
+        btnAddRoom.className = 'text-btn small';
+        btnAddRoom.innerHTML = '+ Add Room';
+        btnAddRoom.style.marginLeft = '12px';
+        btnAddRoom.style.marginTop = '4px';
+        btnAddRoom.onclick = () => {
+            const r = prompt(`New Room in ${house}?`);
+            if (r && !struct[house][r]) {
+                struct[house][r] = [];
+                Storage.save();
+                renderLocationTree();
+            }
+        };
+        houseList.appendChild(btnAddRoom);
 
         locationTreeContainer.appendChild(houseNode);
         locationTreeContainer.appendChild(houseList);
