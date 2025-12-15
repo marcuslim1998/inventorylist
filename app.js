@@ -476,22 +476,66 @@ function performUndo() {
     }
     else if (action.type === 'restoreStorage') {
         if (struct[action.house] && struct[action.house][action.room]) {
-            // Restore at index if possible, else push
-            // action.data is the index
-            if (typeof action.data === 'number') {
-                struct[action.house][action.room].splice(action.data, 0, action.name);
-            } else {
-                struct[action.house][action.room].push(action.name);
+            // Restore string to array
+            const arr = struct[action.house][action.room];
+            if (!arr.includes(action.name)) {
+                arr.push(action.name);
             }
         }
+    }
+    // MISSING LOGIC ADDED HERE
+    else if (action.type === 'catRename') {
+        // Restore Name in List
+        const idx = AppState.categories.indexOf(action.newVal);
+        if (idx !== -1) AppState.categories[idx] = action.oldVal;
+        AppState.categories.sort();
+
+        // Restore Items
+        action.ids.forEach(id => {
+            const item = AppState.items.find(i => i.id === id);
+            if (item) item.category = action.oldVal;
+        });
+
+        renderCategorySettings();
+    }
+    else if (action.type === 'catDelete') {
+        // Restore Category
+        if (!AppState.categories.includes(action.name)) {
+            AppState.categories.push(action.name);
+            AppState.categories.sort();
+        }
+
+        // Restore Items
+        action.ids.forEach(id => {
+            const item = AppState.items.find(i => i.id === id);
+            if (item) item.category = action.name;
+        });
+
+        renderCategorySettings();
     }
 
     Storage.save();
     renderInventory();
-    renderLocationTree();
-    populateFilterDropdowns('init');
 
-    AppState.lastAction = null;
+    // Refresh Filter Dropdowns if needed
+    if (action.type.startsWith('cat') || action.type.startsWith('restore')) {
+        populateFilterDropdowns(); // Refresh all
+    }
+}
+if (typeof action.data === 'number') {
+    struct[action.house][action.room].splice(action.data, 0, action.name);
+} else {
+    struct[action.house][action.room].push(action.name);
+}
+        }
+    }
+
+Storage.save();
+renderInventory();
+renderLocationTree();
+populateFilterDropdowns('init');
+
+AppState.lastAction = null;
 }
 
 function getEffectiveExpiry(item) {
