@@ -137,6 +137,27 @@ main {
     font-style: italic;
 }
 
+.three-col-filters {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.three-col-filters select {
+    padding: 8px;
+    font-size: 13px;
+}
+
+.chk-row.wrap {
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.text-center {
+    text-align: center;
+}
+
 .sort-scroll {
     display: flex;
     gap: 8px;
@@ -409,6 +430,56 @@ main {
 
 .expiry-tag.ok {
     color: var(--success-color);
+}
+
+/* Quantity Control */
+.qty-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f2f2f7;
+    padding: 4px;
+    border-radius: 8px;
+}
+
+.qty-val {
+    font-size: 14px;
+    font-weight: 600;
+    min-width: 20px;
+    text-align: center;
+}
+
+.icon-btn-small {
+    width: 24px;
+    height: 24px;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: 600;
+    color: var(--primary-color);
+    cursor: pointer;
+}
+
+.icon-btn-small.minus {
+    color: var(--danger-color);
+}
+
+.meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-top: 8px;
+}
+
+.meta-right {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
 }
 
 /* Forms */
@@ -719,4 +790,21 @@ select {
     .no-print {
         display: none;
     }
+
+    /* Ensure modal prints nicely */
+    .modal-card {
+        border: none;
+        box-shadow: none;
+    }
+}
+
+.modal-card {
+    background: white;
+    padding: 24px;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 320px;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
 }

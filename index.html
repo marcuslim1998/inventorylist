@@ -17,8 +17,12 @@
     <link rel="stylesheet" href="style.css">
     <link rel="apple-touch-icon" href="icon-192.png">
 
+    <!-- Feather Icons -->
+    <script src="https://unpkg.com/feather-icons"></script>
     <!-- QR Scanner Library -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <!-- QR Generator Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 
 <body>
@@ -40,37 +44,53 @@
             <div class="search-bar">
                 <input type="text" id="inventory-search" placeholder="Search items...">
                 <button id="btn-scan-header" class="icon-btn" aria-label="Scan Barcode">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M3 7V5a2 2 0 0 1 2-2h2"></path>
-                        <path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
-                        <path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
-                        <path d="M7 21H5a2 2 0 0 1-2-2v-2"></path>
-                        <rect x="7" y="7" width="10" height="10"></rect>
-                    </svg>
+                    <i data-feather="maximize"></i>
                 </button>
             </div>
 
             <!-- Toolbar: Filter Toggle -->
             <div class="toolbar-row">
                 <button id="btn-toggle-filters" class="icon-btn-medium full-width">
-                    <span class="icon">🔽</span> Toggle Filters & Context
+                    <i data-feather="filter"></i> Filters & Sort
                 </button>
             </div>
 
             <!-- Filter Panel (Collapsible) -->
             <div id="filter-panel" class="filter-panel hidden">
-                <div class="filter-group">
-                    <label>Filter Status</label>
-                    <div class="chk-row">
-                        <label><input type="checkbox" name="filter-status" value="expired"> Expired</label>
-                        <label><input type="checkbox" name="filter-status" value="soon"> Soon</label>
+                <div class="filter-section">
+                    <label>Location Filter</label>
+                    <div class="three-col-filters">
+                        <select id="filter-house">
+                            <option value="">All Houses</option>
+                        </select>
+                        <select id="filter-room">
+                            <option value="">All Rooms</option>
+                        </select>
+                        <select id="filter-storage">
+                            <option value="">All Storages</option>
+                        </select>
                     </div>
                 </div>
-                <!-- Active Location Context -->
-                <div class="filter-group">
-                    <label>Active Context</label>
-                    <div id="active-context-display" class="context-pill empty">None</div>
-                    <button id="btn-clear-context" class="text-btn small">Clear Context</button>
+
+                <div class="filter-section">
+                    <label>Category</label>
+                    <select id="filter-category">
+                        <option value="">All Categories</option>
+                    </select>
+                </div>
+
+                <div class="filter-section">
+                    <label>Status & Options</label>
+                    <div class="chk-row wrap">
+                        <label><input type="checkbox" id="filter-zero"> Show Empty (0)</label>
+                        <label><input type="checkbox" name="filter-status" value="expired"> Expired</label>
+                        <label><input type="checkbox" name="filter-status" value="soon"> Expiring Soon</label>
+                    </div>
+                </div>
+
+                <div class="filter-actions">
+                    <button id="btn-clear-all-filters" class="text-btn small text-center" style="width:100%">Clear All
+                        Filters</button>
                 </div>
             </div>
 
@@ -208,10 +228,27 @@
                 <h3>Location Manager</h3>
                 <button id="btn-add-root" class="icon-btn">Add House</button>
             </div>
-
+            <div class="location-banner">
+                <i data-feather="info" style="width:16px;"></i> Locations define where items are stored. Filter by them
+                in the main view.
+            </div>
             <div id="location-tree-container" class="tree-container">
                 <!-- Tree injected here -->
             </div>
+
+            <div style="margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                <h3>Data Management</h3>
+                <p style="font-size:13px; color:#666; margin-bottom:12px;">Backup your data or restore from a file.</p>
+                <div class="two-col">
+                    <button id="btn-export-data" class="btn-cancel" style="font-size:14px;"><i
+                            data-feather="download"></i> Backup Data</button>
+                    <button id="btn-import-data" class="btn-cancel" style="font-size:14px;"><i
+                            data-feather="upload"></i> Restore Data</button>
+                    <input type="file" id="file-import-input" accept=".json" style="display:none">
+                </div>
+            </div>
+
+            <div style="height: 100px;"></div><!-- Space -->
         </section>
 
         <!-- VIEW: Scanner Overlay (Hidden by default) -->
@@ -220,6 +257,20 @@
                 <div id="reader"></div> <!-- html5-qrcode target -->
                 <button id="btn-close-scanner" class="btn-float-close">X</button>
                 <p id="scanner-status">Point camera at code...</p>
+            </div>
+        </div>
+
+        <!-- VIEW: QR Display Modal -->
+        <div id="qr-display-modal" class="overlay hidden">
+            <div class="modal-card">
+                <button id="btn-close-qr" class="btn-float-close"
+                    style="color:black; background:none; top:10px; right:10px;">X</button>
+                <h3>Location QR</h3>
+                <div id="qr-code-target"></div>
+                <p id="qr-text" class="highlight-text" style="font-size:14px; margin-top:10px;"></p>
+                <div class="no-print" style="margin-top:20px;">
+                    <button class="btn-primary" onclick="window.print()">Print</button>
+                </div>
             </div>
         </div>
 
