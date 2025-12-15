@@ -148,6 +148,11 @@ function setupNavigation() {
             // specific init
             if (targetId === 'view-add-item') initAddForm();
             if (targetId === 'view-locations') renderLocationTree();
+            if (targetId === 'view-settings') {
+                syncCategories();
+                renderCategorySettings();
+                renderStats();
+            }
         });
     });
 
@@ -164,6 +169,22 @@ function setupNavigation() {
 
             initAddForm();
         });
+    }
+}
+
+// Ensure categories in use are in the list
+function syncCategories() {
+    const used = new Set(AppState.items.map(i => i.category).filter(c => c && c !== 'Uncategorized'));
+    let changed = false;
+    used.forEach(c => {
+        if (!AppState.categories.includes(c)) {
+            AppState.categories.push(c);
+            changed = true;
+        }
+    });
+    if (changed) {
+        AppState.categories.sort();
+        Storage.save();
     }
 }
 
