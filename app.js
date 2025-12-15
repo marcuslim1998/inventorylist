@@ -371,49 +371,70 @@ function renderInventory() {
 AppState.lastAction = null; // { type: 'updateQty', id: '...', oldVal: 5, newVal: 4 }
 
 // Global scope for onclick
+// Global scope for onclick
 window.updateQuantity = function (id, delta) {
-    const item = AppState.items.find(i => i.id === id);
-    if (item) {
-        const oldQty = item.quantity || 0;
-        const newQty = oldQty + delta;
-        if (newQty < 0) return; // Cannot go negative
+    try {
+        const item = AppState.items.find(i => i.id === id);
+        if (item) {
+            const oldQty = item.quantity || 0;
+            const newQty = oldQty + delta;
+            if (newQty < 0) return; // Cannot go negative
 
-        item.quantity = newQty;
+            item.quantity = newQty;
 
-        // Capture Action for Undo
-        AppState.lastAction = { type: 'updateQty', id: id, oldVal: oldQty, newVal: newQty };
+            // Capture Action for Undo
+            AppState.lastAction = { type: 'updateQty', id: id, oldVal: oldQty, newVal: newQty };
 
-        Storage.save();
-        renderInventory();
+            Storage.save();
+            renderInventory();
 
-        // Show Undo Toast
-        let msg = `Quantity: ${newQty}`;
-        if (newQty === 0) msg = "Item Empty (Hidden)";
-        showUndoToast(msg, performUndo);
+            // Show Undo Toast
+            let msg = `Quantity: ${newQty}`;
+            if (newQty === 0) msg = "Item Empty (Hidden)";
+            console.log("Calling showUndoToast");
+            showUndoToast(msg, performUndo);
+        }
+    } catch (e) {
+        alert("Update Error: " + e.message);
     }
 };
 
 function showUndoToast(message, undoCallback) {
-    const toast = document.getElementById('undo-toast');
-    const msgEl = document.getElementById('undo-message');
-    const btn = document.getElementById('btn-undo');
+    try {
+        const toast = document.getElementById('undo-toast');
+        if (!toast) {
+            alert("Error: Undo Toast Element Missing!");
+            return;
+        }
 
-    msgEl.textContent = message;
-    toast.classList.remove('hidden');
+        const msgEl = document.getElementById('undo-message');
+        const btn = document.getElementById('btn-undo');
 
-    // Clear previous timeout
-    if (AppState.toastTimeout) clearTimeout(AppState.toastTimeout);
+        msgEl.textContent = message;
 
-    // Bind Undo
-    btn.onclick = () => {
-        undoCallback();
-        toast.classList.add('hidden');
-    };
+        // FORCE DISPLAY
+        toast.classList.remove('hidden');
+        toast.style.display = 'flex';
 
-    // Auto-hide
-    AppState.toastTimeout = setTimeout(() => {
-        toast.classList.add('hidden');
-    }, 4000);
+        // Clear previous timeout
+        if (AppState.toastTimeout) clearTimeout(AppState.toastTimeout);
+
+        // Bind Undo
+        btn.onclick = () => {
+            undoCallback();
+            toast.classList.add('hidden');
+            toast.style.display = 'none';
+        };
+
+        // Auto-hide
+        AppState.toastTimeout = setTimeout(() => {
+            toast.classList.add('hidden');
+            toast.style.display = 'none';
+        }, 4000);
+
+    } catch (e) {
+        alert("Toast Error: " + e.message);
+    }
 }
 
 function performUndo() {
