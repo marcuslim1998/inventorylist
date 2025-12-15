@@ -522,21 +522,6 @@ function performUndo() {
         populateFilterDropdowns(); // Refresh all
     }
 }
-if (typeof action.data === 'number') {
-    struct[action.house][action.room].splice(action.data, 0, action.name);
-} else {
-    struct[action.house][action.room].push(action.name);
-}
-        }
-    }
-
-Storage.save();
-renderInventory();
-renderLocationTree();
-populateFilterDropdowns('init');
-
-AppState.lastAction = null;
-}
 
 function getEffectiveExpiry(item) {
     let dates = [];
