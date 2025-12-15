@@ -236,9 +236,22 @@
                 <!-- Tree injected here -->
             </div>
 
-            <div style="margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+            <div style="height: 100px;"></div><!-- Space -->
+        </section>
+
+        <!-- VIEW: Settings -->
+        <section id="view-settings" class="view">
+            <div class="section-header">
+                <h3>Settings</h3>
+            </div>
+
+            <!-- Stats -->
+            <div class="location-status-card" id="settings-stats">
+                <!-- Injected by JS -->
+            </div>
+
+            <div style="margin-top: 20px;">
                 <h3>Data Management</h3>
-                <p style="font-size:13px; color:#666; margin-bottom:12px;">Backup your data or restore from a file.</p>
                 <div class="two-col">
                     <button id="btn-export-data" class="btn-cancel" style="font-size:14px;"><i
                             data-feather="download"></i> Backup Data</button>
@@ -248,8 +261,21 @@
                 </div>
             </div>
 
-            <div style="height: 100px;"></div><!-- Space -->
+            <div style="margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                <h3>Tools</h3>
+                <button id="btn-bulk-print-qr" class="btn-primary" style="background:#444;"><i
+                        data-feather="printer"></i> Print All Location QRs (Grid)</button>
+                <p style="font-size:12px; color:#666; margin-top:8px;">Generates a printable page with 3x5cm QR cards
+                    for all locations.</p>
+            </div>
+
+            <div style="height: 100px;"></div>
         </section>
+
+        <!-- SEARCH OVERLAY & TOASTS exist... -->
+
+        <!-- PRINT AREA (Hidden from screen, visible in print) -->
+        <div id="print-area"></div>
 
         <!-- VIEW: Scanner Overlay (Hidden by default) -->
         <div id="scanner-overlay" class="overlay hidden">
@@ -288,6 +314,10 @@
         <button class="nav-item" data-target="view-locations">
             <span class="icon">📍</span>
             <span class="label">Locs</span>
+        </button>
+        <button class="nav-item" data-target="view-settings">
+            <span class="icon">⚙️</span>
+            <span class="label">Settings</span>
         </button>
     </nav>
 
