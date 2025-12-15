@@ -795,10 +795,95 @@ select {
     font-weight: 500;
 }
 
-.empty-state {
+/* QR Modal */
+.modal-card {
+    background: white;
+    width: 90%;
+    max-width: 320px;
+    border-radius: 12px;
+    padding: 24px;
     text-align: center;
-    padding: 40px 20px;
-    color: var(--text-secondary);
+    /* Center Text */
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* Center Children (like QR div) */
+}
+
+/* Ensure QR Target is centered specifically */
+#qr-code-target {
+    margin: 0 auto;
+    display: flex;
+    justify-content: center;
+}
+
+#qr-code-target img {
+    margin: auto;
+}
+
+/* PRINT STYLES for Bulk QR */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+
+    #print-area,
+    #print-area * {
+        visibility: visible;
+    }
+
+    #print-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+
+    .qr-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, 3cm);
+        grid-auto-rows: 5cm;
+        gap: 10px;
+        justify-content: center;
+    }
+
+    .qr-card-print {
+        border: 1px solid #ccc;
+        /* Cut Line guide */
+        width: 3cm;
+        height: 5cm;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 4px;
+        page-break-inside: avoid;
+        text-align: center;
+    }
+
+    .qr-card-print img {
+        width: 2.2cm !important;
+        height: 2.2cm !important;
+    }
+
+    .qr-card-print .path {
+        font-size: 8px;
+        word-break: break-all;
+        margin-top: 5px;
+    }
+
+    /* Hide unwanted UI during print */
+    .no-print,
+    .app-header,
+    .bottom-nav,
+    .toast,
+    .overlay {
+        display: none !important;
+    }
+}
+
+color: var(--text-secondary);
 }
 
 .empty-state .sub-text {

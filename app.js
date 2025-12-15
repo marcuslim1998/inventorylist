@@ -52,8 +52,26 @@ const Storage = {
 const views = {
     inventory: document.getElementById('view-inventory'),
     addItem: document.getElementById('view-add-item'),
-    locations: document.getElementById('view-locations')
+    locations: document.getElementById('view-locations'),
+    settings: document.getElementById('view-settings')
 };
+
+// ...
+
+// --- INITIALIZATION ---
+function init() {
+    Storage.load();
+    setupNavigation();
+    setupInventoryUI();
+    setupForm();
+    setupScannerUI();
+    setupLocationsUI();
+    setupSettingsUI(); // NEW
+
+    renderInventory();
+    renderLocationTree();
+    if (window.feather) feather.replace();
+}
 
 const navItems = document.querySelectorAll('.nav-item');
 
@@ -623,8 +641,13 @@ function setupLocationsUI() {
             updateHierarchySelects('house');
         }
     };
+}
 
-    // Data Management
+function setupSettingsUI() {
+    // 1. Stats
+    renderStats();
+
+    // 2. Data Management (Moved from Locations)
     document.getElementById('btn-export-data').onclick = exportData;
     document.getElementById('btn-import-data').onclick = () => document.getElementById('file-import-input').click();
 
@@ -656,6 +679,90 @@ function setupLocationsUI() {
         reader.readAsText(file);
         e.target.value = ''; // Reset
     };
+
+    // 3. Bulk Print
+    document.getElementById('btn-bulk-print-qr').onclick = printAllQRs;
+}
+
+function renderStats() {
+    const totalItems = AppState.items.length;
+    let totalQty = 0;
+    AppState.items.forEach(i => totalQty += (i.quantity || 0));
+
+    let statsHtml = `
+        <div class="two-col" style="margin-bottom:10px;">
+            <div>
+                <h2 style="margin:0; color:var(--primary-color);">${totalItems}</h2>
+                <small>Unique Items</small>
+            </div>
+            <div>
+                <h2 style="margin:0; color:var(--primary-color);">${totalQty}</h2>
+                <small>Total Quantity</small>
+            </div>
+        </div>
+        <p style="font-size:12px; color:var(--text-secondary);">Inventory Summary</p>
+    `;
+    document.getElementById('settings-stats').innerHTML = statsHtml;
+}
+
+async function printAllQRs() {
+    const printArea = document.getElementById('print-area');
+    printArea.innerHTML = '<div class="qr-grid"></div>';
+    const grid = printArea.querySelector('.qr-grid');
+
+    // Collect paths
+    const paths = [];
+    const struct = AppState.locationStructure;
+    Object.keys(struct).sort().forEach(h => {
+        // House QR? Maybe not needed if generic. But let's verify user want all. "for all data into pdf... 3x5cm"
+        // Let's assume Room and Storage are the physical ones. House usually big. But let's add all.
+        paths.push(h); // House
+        const rooms = struct[h];
+        Object.keys(rooms).sort().forEach(r => {
+            paths.push(`${h} > ${r}`); // Room
+            rooms[r].sort().forEach(s => {
+                paths.push(`${h} > ${r} > ${s}`); // Storage
+            });
+        });
+    });
+
+    if (paths.length === 0) { alert("No locations found."); return; }
+
+    // Render loop (async to allow UI update)
+    if (!confirm(`Generate QRs for ${paths.length} locations? This might take a moment.`)) return;
+
+    for (const path of paths) {
+        const card = document.createElement('div');
+        card.className = 'qr-card-print';
+
+        const qrDiv = document.createElement('div');
+        // Generate QR
+        new QRCode(qrDiv, {
+            text: path,
+            width: 128, // 128px is plenty for 3cm (approx 113px)
+            height: 128,
+            colorDark: "#000000",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.M
+        });
+
+        const label = document.createElement('div');
+        label.className = 'path';
+        label.innerText = path;
+
+        card.appendChild(qrDiv);
+        card.appendChild(label);
+        grid.appendChild(card);
+
+        // Small delay to prevent freeze
+        // await new Promise(r => setTimeout(r, 10));
+    }
+
+    // Wait images
+    setTimeout(() => {
+        window.print();
+        // cleanup? printArea.innerHTML = '';
+    }, 500);
 }
 
 function exportData() {
