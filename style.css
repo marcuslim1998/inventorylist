@@ -597,15 +597,36 @@ select {
     bottom: 0;
     left: 0;
     width: 100%;
-    background: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.95);
+    /* More opaque */
     backdrop-filter: blur(10px);
-    border-top: 1px solid var(--border-color);
+    border-top: none;
+    /* No Border */
     display: flex;
-    justify-content: space-around;
+    justify-content: space-evenly;
     align-items: center;
     padding-bottom: env(safe-area-inset-bottom);
-    height: calc(60px + env(safe-area-inset-bottom));
+    height: calc(85px + env(safe-area-inset-bottom));
+    /* Bigger Area */
     z-index: 90;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
+    /* Soft shadow instead of border */
+}
+
+.nav-item {
+    background: none;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: var(--text-secondary);
+    font-size: 11px;
+    /* Slightly larger text */
+    padding: 10px;
+    width: 80px;
+    /* Bigger hit target */
+    height: 100%;
+    justify-content: center;
 }
 
 /* FAB Main Add Button */
@@ -635,12 +656,6 @@ select {
 .fab-main svg {
     width: 28px;
     height: 28px;
-}
-
-/* Bottom Nav Adjustments */
-.bottom-nav {
-    justify-content: space-evenly;
-    /* Spread 3 items evenly */
 }
 
 /* Standardized Filters */
@@ -683,12 +698,14 @@ select {
 
 /* Location / Settings Polish */
 .location-status-card {
-    padding: 16px;
-    /* Reduced from 20px */
-    border: 1px solid var(--border-color);
-    /* Add definition */
-    box-shadow: none;
-    /* Cleaner look */
+    background: white;
+    padding: 20px;
+    border-radius: var(--border-radius);
+    text-align: center;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    /* Restored Shadow */
+    border: none;
 }
 
 .hierarchy-display {

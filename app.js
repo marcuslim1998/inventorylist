@@ -609,7 +609,6 @@ function setupForm() {
         e.preventDefault();
 
         const nameVal = form.name.value.trim();
-        // Validation: Only Name is strictly required
         if (!nameVal) {
             alert("Please enter a Product Name.");
             form.name.focus();
@@ -624,33 +623,60 @@ function setupForm() {
         };
 
         const qty = parseInt(form.quantity?.value) || 1;
+        const barcodeVal = form.barcode?.value.trim() || "";
 
-        const newItem = {
-            id: Date.now().toString(),
-            barcode: form.barcode?.value.trim() || "",
-            name: nameVal,
-            category: catVal,
-            quantity: qty,
-            isOpened: form.isOpened?.checked || false,
-            openedDate: form.isOpened?.checked ? form.openedDate?.value : null,
-            shelfLife: form.isOpened?.checked ? form.shelfLife?.value : null,
-            expiry: form.expiry?.value || "", // Optional
-            location: loc, // Optional (empty strings if not set)
-            createdAt: new Date().toISOString()
-        };
+        // CHECK FOR EXISTING TO MERGE
+        // We match if: Same Barcode (if present) AND Same Location AND Same Name (to be safe)
+        // If no barcode, we might rely on Name + Location? Let's stick to Barcode primarily if valid.
+        // User asked: "if i scan ... auto add".
 
-        AppState.items.push(newItem);
+        let existing = null;
+        if (barcodeVal) {
+            existing = AppState.items.find(i =>
+                i.barcode === barcodeVal &&
+                i.location.house === loc.house &&
+                i.location.room === loc.room &&
+                i.location.storage === loc.storage
+            );
+        } else {
+            // Optional: Match by strict Name match if no barcode? 
+            // Might be risky if user intends different batches. But let's do it for convenience if exact name matches.
+            existing = AppState.items.find(i =>
+                i.name === nameVal &&
+                i.location.house === loc.house &&
+                i.location.room === loc.room &&
+                i.location.storage === loc.storage
+            );
+        }
+
+        if (existing) {
+            existing.quantity = (existing.quantity || 0) + qty;
+            alert(`Updated existing item quantity! New Total: ${existing.quantity}`);
+        } else {
+            const newItem = {
+                id: Date.now().toString(),
+                barcode: barcodeVal,
+                name: nameVal,
+                category: catVal,
+                quantity: qty,
+                isOpened: form.isOpened?.checked || false,
+                openedDate: form.isOpened?.checked ? form.openedDate?.value : null,
+                shelfLife: form.isOpened?.checked ? form.shelfLife?.value : null,
+                expiry: form.expiry?.value || "",
+                location: loc,
+                createdAt: new Date().toISOString()
+            };
+            AppState.items.push(newItem);
+            alert("Item saved successfully!");
+        }
+
         Storage.save();
-        alert("Item saved successfully!");
-
-        // Refresh List (Critical Fix)
         renderInventory();
 
-        // Reset critical fields
+        // Reset fields
         form.name.value = '';
         if (form.barcode) form.barcode.value = '';
         if (form.expiry) form.expiry.value = '';
-        // Keep Location & Category for easier entry of multiple items
     });
 }
 
