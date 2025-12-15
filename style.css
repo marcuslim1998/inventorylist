@@ -415,18 +415,22 @@ main {
 /* Toast */
 .toast {
     position: fixed;
-    bottom: 80px;
+    bottom: 120px;
+    /* Higher up to avoid nav overlap */
     left: 50%;
     transform: translateX(-50%);
-    background: #333;
-    color: #fff;
-    padding: 12px 20px;
-    border-radius: 25px;
+    background-color: #333333;
+    /* Explicit color */
+    color: #ffffff;
+    padding: 16px 24px;
+    border-radius: 50px;
     display: flex;
     align-items: center;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    z-index: 9999;
-    transition: opacity 0.3s;
+    justify-content: space-between;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+    z-index: 2147483647;
+    /* Max Z-Index */
+    min-width: 200px;
 }
 
 .toast.hidden {
@@ -823,21 +827,28 @@ select {
 }
 
 /* PRINT STYLES for Bulk QR */
+/* Default Hide on Screen */
+#print-area {
+    display: none;
+}
+
 @media print {
     body * {
         visibility: hidden;
     }
 
-    #print-area,
-    #print-area * {
-        visibility: visible;
-    }
-
     #print-area {
+        display: block;
+        /* Show for print */
+        visibility: visible;
         position: absolute;
         left: 0;
         top: 0;
         width: 100%;
+    }
+
+    #print-area * {
+        visibility: visible;
     }
 
     .qr-grid {
