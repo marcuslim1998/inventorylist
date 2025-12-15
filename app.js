@@ -520,6 +520,9 @@ function performUndo() {
         renderCategorySettings();
     }
     else if (action.type === 'catDelete') {
+        // DEBUG
+        // alert(`Undo Delete: Restoring "${action.name}"`);
+
         // Restore Category
         if (!AppState.categories.includes(action.name)) {
             AppState.categories.push(action.name);
@@ -527,19 +530,27 @@ function performUndo() {
         }
 
         // Restore Items
+        let count = 0;
         action.ids.forEach(id => {
             const item = AppState.items.find(i => i.id === id);
-            if (item) item.category = action.name;
+            if (item) {
+                item.category = action.name;
+                count++;
+            }
         });
 
+        // Ensure consistency
+        syncCategories();
+
         renderCategorySettings();
+        // alert(`Restored "${action.name}" and updated ${count} items.`);
     }
 
     Storage.save();
     renderInventory();
 
     // Refresh Filter Dropdowns if needed
-    if (action.type.startsWith('cat') || action.type.startsWith('restore')) {
+    if (action.type && (action.type.startsWith('cat') || action.type.startsWith('restore'))) {
         populateFilterDropdowns(); // Refresh all
     }
 }
