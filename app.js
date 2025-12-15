@@ -359,16 +359,69 @@ function renderInventory() {
     if (window.feather) feather.replace();
 }
 
+// Undo State
+AppState.lastAction = null; // { type: 'updateQty', id: '...', oldVal: 5, newVal: 4 }
+
 // Global scope for onclick
 window.updateQuantity = function (id, delta) {
     const item = AppState.items.find(i => i.id === id);
     if (item) {
-        item.quantity = (item.quantity || 0) + delta;
-        if (item.quantity < 0) item.quantity = 0;
+        const oldQty = item.quantity || 0;
+        const newQty = oldQty + delta;
+        if (newQty < 0) return; // Cannot go negative
+
+        item.quantity = newQty;
+
+        // Capture Action for Undo
+        AppState.lastAction = { type: 'updateQty', id: id, oldVal: oldQty, newVal: newQty };
+
         Storage.save();
         renderInventory();
+
+        // Show Undo Toast
+        let msg = `Quantity: ${newQty}`;
+        if (newQty === 0) msg = "Item Empty (Hidden)";
+        showUndoToast(msg, performUndo);
     }
 };
+
+function showUndoToast(message, undoCallback) {
+    const toast = document.getElementById('undo-toast');
+    const msgEl = document.getElementById('undo-message');
+    const btn = document.getElementById('btn-undo');
+
+    msgEl.textContent = message;
+    toast.classList.remove('hidden');
+
+    // Clear previous timeout
+    if (AppState.toastTimeout) clearTimeout(AppState.toastTimeout);
+
+    // Bind Undo
+    btn.onclick = () => {
+        undoCallback();
+        toast.classList.add('hidden');
+    };
+
+    // Auto-hide
+    AppState.toastTimeout = setTimeout(() => {
+        toast.classList.add('hidden');
+    }, 4000);
+}
+
+function performUndo() {
+    if (!AppState.lastAction) return;
+    const action = AppState.lastAction;
+
+    if (action.type === 'updateQty') {
+        const item = AppState.items.find(i => i.id === action.id);
+        if (item) {
+            item.quantity = action.oldVal;
+            Storage.save();
+            renderInventory();
+        }
+    }
+    AppState.lastAction = null;
+}
 
 function getEffectiveExpiry(item) {
     let dates = [];
@@ -460,39 +513,44 @@ function updateHierarchySelects(level) {
 }
 
 function setupForm() {
-    // Buttons for Adding Attributes (Category, House) - Simplified for brevity, assume similar to before
+    // Buttons for Adding Attributes (Category, House)
     form.btnAddCat.onclick = () => {
         const n = prompt("New Category:");
         if (n) { AppState.categories.push(n); Storage.save(); initAddForm(); form.category.value = n; }
     };
+    form.btnAddHouse.onclick = () => {
+        const n = prompt("New House Name:");
+        if (n && !AppState.locationStructure[n]) {
+            AppState.locationStructure[n] = {};
+            Storage.save();
+            updateHierarchySelects('house');
+            form.house.value = n;
+            updateHierarchySelects('room');
+            renderLocationTree();
+        }
+    };
+    // ... Sub-locations: for now rely on Manage Locations or just create logic here if needed, but user didn't ask.
+    // Actually, user wants 'all info optional except name'.
+    // So 'Hierarchy' should not be enforced.
 
     // Form Submit
     document.getElementById('add-item-form')?.addEventListener('submit', (e) => {
         e.preventDefault();
 
-        // Defensive Checks for Inputs
-        if (!form.name || !form.category || !form.house || !form.room || !form.storage) {
-            alert("Error: Missing form inputs. Please reload.");
-            return;
-        }
-
         const nameVal = form.name.value.trim();
-        const catVal = form.category.value;
-        const loc = {
-            house: form.house.value,
-            room: form.room.value,
-            storage: form.storage.value
-        };
-
-        // Explicit Validation with Clear Messages
+        // Validation: Only Name is strictly required
         if (!nameVal) {
-            alert("Please enter an Item Name.");
+            alert("Please enter a Product Name.");
             form.name.focus();
             return;
         }
 
-        // Category and Location are optional
-        // We save them as empty strings/objects if missing.
+        const catVal = form.category.value || "Uncategorized";
+        const loc = {
+            house: form.house.value || "",
+            room: form.room.value || "",
+            storage: form.storage.value || ""
+        };
 
         const qty = parseInt(form.quantity?.value) || 1;
 
@@ -505,14 +563,17 @@ function setupForm() {
             isOpened: form.isOpened?.checked || false,
             openedDate: form.isOpened?.checked ? form.openedDate?.value : null,
             shelfLife: form.isOpened?.checked ? form.shelfLife?.value : null,
-            expiry: form.expiry?.value || "",
-            location: loc,
+            expiry: form.expiry?.value || "", // Optional
+            location: loc, // Optional (empty strings if not set)
             createdAt: new Date().toISOString()
         };
 
         AppState.items.push(newItem);
         Storage.save();
         alert("Item saved successfully!");
+
+        // Refresh List (Critical Fix)
+        renderInventory();
 
         // Reset critical fields
         form.name.value = '';

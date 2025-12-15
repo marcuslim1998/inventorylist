@@ -408,6 +408,31 @@ main {
     margin-top: 2px;
 }
 
+.modal-card h3 {
+    margin-top: 0;
+}
+
+/* Toast */
+.toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 25px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 2000;
+    transition: opacity 0.3s;
+}
+
+.toast.hidden {
+    display: none;
+}
+
 .inventory-item .meta {
     font-size: 14px;
     color: var(--text-secondary);
