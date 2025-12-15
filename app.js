@@ -634,44 +634,73 @@ function setupLocationsUI() {
 }
 
 function setupSettingsUI() {
-    // 1. Stats
-    renderStats();
+    console.log("Initializing Settings UI...");
+    try {
+        // 1. Stats
+        renderStats();
 
-    // 2. Data Management (Moved from Locations)
-    document.getElementById('btn-export-data').onclick = exportData;
-    document.getElementById('btn-import-data').onclick = () => document.getElementById('file-import-input').click();
+        // 2. Data Management
+        const btnExport = document.getElementById('btn-export-data');
+        const btnImport = document.getElementById('btn-import-data');
+        const fileInput = document.getElementById('file-import-input');
 
-    document.getElementById('file-import-input').onchange = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+        if (btnExport) {
+            btnExport.onclick = () => {
+                console.log("Export Clicked");
+                try { exportData(); } catch (e) { alert("Export Error: " + e.message); }
+            };
+        } else console.error("btn-export-data missing");
 
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            try {
-                const data = JSON.parse(event.target.result);
-                // Validate basic structure
-                if (data.items && data.locationStructure && data.categories) {
-                    if (confirm("This will OVERWRITE all current data. Are you sure?")) {
-                        AppState.items = data.items;
-                        AppState.locationStructure = data.locationStructure;
-                        AppState.categories = data.categories;
-                        Storage.save();
-                        alert("Data restored successfully! App will reload.");
-                        location.reload();
+        if (btnImport) {
+            btnImport.onclick = () => {
+                console.log("Import Clicked");
+                if (fileInput) fileInput.click();
+            };
+        } else console.error("btn-import-data missing");
+
+        if (fileInput) {
+            fileInput.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        if (data.items && data.locationStructure && data.categories) {
+                            if (confirm("This will OVERWRITE all current data. Are you sure?")) {
+                                AppState.items = data.items;
+                                AppState.locationStructure = data.locationStructure;
+                                AppState.categories = data.categories;
+                                Storage.save();
+                                alert("Data restored successfully! App will reload.");
+                                location.reload();
+                            }
+                        } else {
+                            alert("Invalid backup file format.");
+                        }
+                    } catch (err) {
+                        alert("Error parsing file: " + err.message);
                     }
-                } else {
-                    alert("Invalid backup file format.");
-                }
-            } catch (err) {
-                alert("Error parsing file: " + err.message);
-            }
-        };
-        reader.readAsText(file);
-        e.target.value = ''; // Reset
-    };
+                };
+                reader.readAsText(file);
+                e.target.value = '';
+            };
+        }
 
-    // 3. Bulk Print
-    document.getElementById('btn-bulk-print-qr').onclick = printAllQRs;
+        // 3. Bulk Print
+        const btnPrint = document.getElementById('btn-bulk-print-qr');
+        if (btnPrint) {
+            btnPrint.onclick = () => {
+                console.log("Print Clicked");
+                try { printAllQRs(); } catch (e) { alert("Print Error: " + e.message); }
+            };
+        } else console.error("btn-bulk-print-qr missing");
+
+    } catch (e) {
+        console.error("Error in setupSettingsUI:", e);
+        alert("Settings UI Error: " + e.message);
+    }
 }
 
 function renderStats() {
