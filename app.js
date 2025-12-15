@@ -542,196 +542,250 @@ function renderLocationTree() {
                 const storages = rooms[room];
                 if (storages) {
                     storages.sort().forEach(storage => {
-                        // Pass full path for QR
                         const storageNode = createTreeNode(storage, 'storage', house, room);
                         roomList.appendChild(storageNode);
                     });
                 }
+                houseList.appendChild(roomNode);
+                houseList.appendChild(roomList);
+            });
+        }
 
-                function createTreeNode(type, name, deleteFn, renameFn) {
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'tree-node';
+        locationTreeContainer.appendChild(houseNode);
+        locationTreeContainer.appendChild(houseList);
+    });
 
-                    const header = document.createElement('div');
-                    header.className = `tree-header ${type}`;
-                    header.innerHTML = `<span>${escapeHtml(name)}</span>`;
+    if (window.feather) feather.replace();
+}
 
-                    const actions = document.createElement('div');
-                    actions.className = 'tree-actions';
+function createTreeNode(name, type, parentHouse, parentRoom) {
+    const div = document.createElement('div');
+    div.className = `tree-node`;
 
-                    const btnRen = document.createElement('button');
-                    btnRen.textContent = '✏️';
-                    btnRen.onclick = renameFn;
+    // Path for QR
+    let path = name;
+    if (type === 'room') path = `${parentHouse} > ${name}`;
+    if (type === 'storage') path = `${parentHouse} > ${parentRoom} > ${name}`;
 
-                    const btnDel = document.createElement('button');
-                    btnDel.textContent = '🗑️';
-                    btnDel.className = 'del';
-                    btnDel.onclick = deleteFn;
+    let qrBtn = '';
+    if (type === 'storage') {
+        qrBtn = `<button class="icon-btn-small" onclick="showLocationsQR('${escapeHtml(path)}')" title="Show QR" style="border:none; color:var(--text-secondary);"><i data-feather="grid"></i></button>`;
+    }
 
-                    actions.append(btnRen, btnDel);
-                    header.appendChild(actions);
-                    wrapper.appendChild(header);
-                    return wrapper;
-                }
+    div.innerHTML = `
+        <div class="tree-header ${type}">
+            <span>${escapeHtml(name)}</span>
+            <div class="tree-actions" style="display:flex; gap:4px;">
+                ${qrBtn}
+                <button class="icon-btn-small" onclick="renameLocation('${type}', '${escapeHtml(name)}', '${escapeHtml(parentHouse)}', '${escapeHtml(parentRoom)}')" title="Rename" style="border:none; color:var(--primary-color);"><i data-feather="edit-2"></i></button>
+                <button class="icon-btn-small" onclick="deleteLocation('${type}', '${escapeHtml(name)}', '${escapeHtml(parentHouse)}', '${escapeHtml(parentRoom)}')" title="Delete" style="border:none; color:var(--danger-color);"><i data-feather="trash-2"></i></button>
+            </div>
+        </div>
+    `;
+    return div;
+}
 
-                function deleteNode(type, name, house, room) {
-                    // Check constraints: Are there items here?
-                    const hasItems = AppState.items.some(i => {
-                        if (type === 'house') return i.location.house === name;
-                        if (type === 'room') return i.location.house === house && i.location.room === name;
-                        if (type === 'storage') return i.location.house === house && i.location.room === room && i.location.storage === name;
-                        return false;
-                    });
+// QR Modal Logic
+window.showLocationsQR = function (path) {
+    const modal = document.getElementById('qr-display-modal');
+    const target = document.getElementById('qr-code-target');
+    const textEl = document.getElementById('qr-text');
 
-                    if (hasItems) return alert("Cannot delete: Items exist in this location.");
+    target.innerHTML = '';
+    textEl.textContent = path;
 
-                    if (confirm(`Delete ${type} "${name}"?`)) {
-                        if (type === 'house') delete AppState.locationStructure[name];
-                        if (type === 'room') delete AppState.locationStructure[house][name];
-                        if (type === 'storage') {
-                            const idx = AppState.locationStructure[house][room].indexOf(name);
-                            if (idx > -1) AppState.locationStructure[house][room].splice(idx, 1);
-                        }
-                        Storage.save();
-                        renderLocationTree();
-                    }
-                }
+    try {
+        new QRCode(target, {
+            text: path,
+            width: 200,
+            height: 200,
+            colorDark: "#000000",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
+        });
+        modal.classList.remove('hidden');
+    } catch (e) {
+        alert("QR Library not loaded. Please reload page.");
+    }
 
-                function renameNode(type, oldName, house, room) {
-                    const newName = prompt("Rename to:", oldName);
-                    if (!newName || newName === oldName) return;
+    document.getElementById('btn-close-qr').onclick = () => {
+        modal.classList.add('hidden');
+    };
+};
 
-                    // Update Structure
-                    if (type === 'house') {
-                        AppState.locationStructure[newName] = AppState.locationStructure[oldName];
-                        delete AppState.locationStructure[oldName];
-                    }
-                    if (type === 'room') {
-                        AppState.locationStructure[house][newName] = AppState.locationStructure[house][oldName];
-                        delete AppState.locationStructure[house][oldName];
-                    }
-                    if (type === 'storage') {
-                        const arr = AppState.locationStructure[house][room];
-                        arr[arr.indexOf(oldName)] = newName;
-                    }
+window.renameLocation = function (type, oldName, pHouse, pRoom) {
+    const newName = prompt("Rename " + type + " to:", oldName);
+    if (!newName || newName === oldName) return;
 
-                    // Update Items (Migration)
-                    AppState.items.forEach(i => {
-                        if (type === 'house' && i.location.house === oldName) i.location.house = newName;
-                        if (type === 'room' && i.location.house === house && i.location.room === oldName) i.location.room = newName;
-                        if (type === 'storage' && i.location.house === house && i.location.room === room && i.location.storage === oldName) i.location.storage = newName;
-                    });
+    const struct = AppState.locationStructure;
 
-                    Storage.save();
-                    renderLocationTree();
-                }
+    if (type === 'house') {
+        struct[newName] = struct[oldName];
+        delete struct[oldName];
+        // Update Items
+        AppState.items.forEach(i => { if (i.location?.house === oldName) i.location.house = newName; });
+    }
+    if (type === 'room') {
+        struct[pHouse][newName] = struct[pHouse][oldName];
+        delete struct[pHouse][oldName];
+        AppState.items.forEach(i => { if (i.location?.house === pHouse && i.location?.room === oldName) i.location.room = newName; });
+    }
+    if (type === 'storage') {
+        const arr = struct[pHouse][pRoom];
+        const idx = arr.indexOf(oldName);
+        if (idx !== -1) arr[idx] = newName;
+        AppState.items.forEach(i => {
+            if (i.location?.house === pHouse && i.location?.room === pRoom && i.location?.storage === oldName) i.location.storage = newName;
+        });
+    }
+
+    Storage.save();
+    renderLocationTree();
+    populateFilterDropdowns('init');
+};
+
+window.deleteLocation = function (type, name, pHouse, pRoom) {
+    const struct = AppState.locationStructure;
+
+    // Recursively check for items
+    const hasItems = (h, r, s) => {
+        return AppState.items.some(i => {
+            const l = i.location || {};
+            if (l.house !== h) return false;
+            if (r && l.room !== r) return false;
+            if (s && l.storage !== s) return false;
+            return true;
+        });
+    };
+
+    if (type === 'house') {
+        if (hasItems(name)) { alert("Cannot delete: House contains items."); return; }
+        if (confirm(`Delete House ${name}?`)) delete struct[name];
+    }
+    if (type === 'room') {
+        if (hasItems(pHouse, name)) { alert("Cannot delete: Room contains items."); return; }
+        if (confirm(`Delete Room ${name}?`)) delete struct[pHouse][name];
+    }
+    if (type === 'storage') {
+        if (hasItems(pHouse, pRoom, name)) { alert("Cannot delete: Storage contains items."); return; }
+        if (confirm(`Delete Storage ${name}?`)) {
+            const arr = struct[pHouse][pRoom];
+            const idx = arr.indexOf(name);
+            if (idx > -1) arr.splice(idx, 1);
+        }
+    }
+
+    Storage.save();
+    renderLocationTree();
+    populateFilterDropdowns('init');
+};
 
 
-                // --- SMART SCANNER ---
-                function setupScannerUI() {
-                    form.btnScanBarcode.onclick = () => startScanning('barcode');
-                    form.btnScanLocation.onclick = () => startScanning('loc-form');
-                    btnCloseScanner.onclick = stopScanning;
-                }
+// --- SMART SCANNER ---
+function setupScannerUI() {
+    form.btnScanBarcode.onclick = () => startScanning('barcode');
+    form.btnScanLocation.onclick = () => startScanning('loc-form');
+    btnCloseScanner.onclick = stopScanning;
+}
 
-                function startScanning(target) {
-                    if (AppState.isScanning) return;
-                    AppState.isScanning = true;
-                    AppState.scannerTarget = target;
+function startScanning(target) {
+    if (AppState.isScanning) return;
+    AppState.isScanning = true;
+    AppState.scannerTarget = target;
 
-                    scannerOverlay.classList.remove('hidden');
-                    scannerStatus.textContent = "Checking Camera...";
+    scannerOverlay.classList.remove('hidden');
+    scannerStatus.textContent = "Checking Camera...";
 
-                    if (!AppState.html5QrCode) AppState.html5QrCode = new Html5Qrcode("reader");
+    if (!AppState.html5QrCode) AppState.html5QrCode = new Html5Qrcode("reader");
 
-                    AppState.html5QrCode.start(
-                        { facingMode: "environment" },
-                        { fps: 10, qrbox: { width: 250, height: 250 } },
-                        (text) => handleSmartScan(text)
-                    ).catch(err => {
-                        alert("Camera Error: " + err);
-                        stopScanning();
-                    });
-                }
+    AppState.html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (text) => handleSmartScan(text)
+    ).catch(err => {
+        alert("Camera Error: " + err);
+        stopScanning();
+    });
+}
 
-                function stopScanning() {
-                    if (AppState.html5QrCode && AppState.isScanning) {
-                        AppState.html5QrCode.stop().then(() => {
-                            AppState.html5QrCode.clear();
-                            scannerOverlay.classList.add('hidden');
-                            AppState.isScanning = false;
-                        }).catch(() => {
-                            scannerOverlay.classList.add('hidden');
-                            AppState.isScanning = false;
-                        });
-                    } else {
-                        scannerOverlay.classList.add('hidden');
-                        AppState.isScanning = false;
-                    }
-                }
+function stopScanning() {
+    if (AppState.html5QrCode && AppState.isScanning) {
+        AppState.html5QrCode.stop().then(() => {
+            AppState.html5QrCode.clear();
+            scannerOverlay.classList.add('hidden');
+            AppState.isScanning = false;
+        }).catch(() => {
+            scannerOverlay.classList.add('hidden');
+            AppState.isScanning = false;
+        });
+    } else {
+        scannerOverlay.classList.add('hidden');
+        AppState.isScanning = false;
+    }
+}
 
-                function handleSmartScan(text) {
-                    if (navigator.vibrate) navigator.vibrate(200);
-                    stopScanning();
+function handleSmartScan(text) {
+    if (navigator.vibrate) navigator.vibrate(200);
+    stopScanning();
 
-                    // 1. If triggered from "Add Item" fields, simple behavior
-                    if (AppState.scannerTarget === 'barcode') {
-                        form.barcode.value = text;
-                        // Auto-fill logic
-                        const existing = AppState.items.find(i => i.barcode === text);
-                        if (existing) { form.name.value = existing.name; form.category.value = existing.category; }
-                        return;
-                    }
-                    if (AppState.scannerTarget === 'loc-form') {
-                        tryParseLocation(text, (loc) => {
-                            // Fill form
-                            form.house.value = loc.house; updateHierarchySelects('house');
-                            form.room.value = loc.room; updateHierarchySelects('room');
-                            form.storage.value = loc.storage;
-                        });
-                        return;
-                    }
+    // 1. If triggered from "Add Item" fields, simple behavior
+    if (AppState.scannerTarget === 'barcode') {
+        form.barcode.value = text;
+        // Auto-fill logic
+        const existing = AppState.items.find(i => i.barcode === text);
+        if (existing) { form.name.value = existing.name; form.category.value = existing.category; }
+        return;
+    }
+    if (AppState.scannerTarget === 'loc-form') {
+        tryParseLocation(text, (loc) => {
+            // Fill form
+            form.house.value = loc.house; updateHierarchySelects('house');
+            form.room.value = loc.room; updateHierarchySelects('room');
+            form.storage.value = loc.storage;
+        });
+        return;
+    }
 
-                    // 2. "Smart Scan" from Header (Determine context vs item)
-                    if (AppState.scannerTarget === 'smart-scan') {
-                        if (text.includes(' > ')) {
-                            // Likely Location
-                            tryParseLocation(text, (loc) => {
-                                AppState.filters.house = loc.house;
-                                // Re-populate rooms based on new house
-                                populateFilterDropdowns('room');
-                                filterInputs.house.value = loc.house;
+    // 2. "Smart Scan" from Header (Determine context vs item)
+    if (AppState.scannerTarget === 'smart-scan') {
+        if (text.includes(' > ')) {
+            // Likely Location
+            tryParseLocation(text, (loc) => {
+                AppState.filters.house = loc.house;
+                // Re-populate rooms based on new house
+                populateFilterDropdowns('room');
+                filterInputs.house.value = loc.house;
 
-                                AppState.filters.room = loc.room;
-                                populateFilterDropdowns('storage');
-                                filterInputs.room.value = loc.room;
+                AppState.filters.room = loc.room;
+                populateFilterDropdowns('storage');
+                filterInputs.room.value = loc.room;
 
-                                AppState.filters.storage = loc.storage;
-                                filterInputs.storage.value = loc.storage;
+                AppState.filters.storage = loc.storage;
+                filterInputs.storage.value = loc.storage;
 
-                                renderInventory();
-                                alert(`Filter set to ${loc.house} > ${loc.room} > ${loc.storage}`);
-                            });
-                        } else {
-                            // Assume Barcode -> Search
-                            searchInput.value = text;
-                            renderInventory(); // Filters by text
-                        }
-                    }
-                }
+                renderInventory();
+                alert(`Filter set to ${loc.house} > ${loc.room} > ${loc.storage}`);
+            });
+        } else {
+            // Assume Barcode -> Search
+            searchInput.value = text;
+            renderInventory(); // Filters by text
+        }
+    }
+}
 
-                function tryParseLocation(text, callback) {
-                    const parts = text.split(' > ');
-                    if (parts.length === 3) {
-                        callback({ house: parts[0], room: parts[1], storage: parts[2] });
-                    } else {
-                        alert("Not a valid Location QR (House > Room > Storage)");
-                    }
-                }
+function tryParseLocation(text, callback) {
+    const parts = text.split(' > ');
+    if (parts.length === 3) {
+        callback({ house: parts[0], room: parts[1], storage: parts[2] });
+    } else {
+        alert("Not a valid Location QR (House > Room > Storage)");
+    }
+}
 
-                function escapeHtml(text) {
-                    if (!text) return '';
-                    return text.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                }
+function escapeHtml(text) {
+    if (!text) return '';
+    return text.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 
-                document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', init);
