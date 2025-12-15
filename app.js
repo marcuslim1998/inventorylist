@@ -411,15 +411,41 @@ function showUndoToast(message, undoCallback) {
 function performUndo() {
     if (!AppState.lastAction) return;
     const action = AppState.lastAction;
+    const struct = AppState.locationStructure;
 
+    // --- RESTORE LOGIC ---
     if (action.type === 'updateQty') {
         const item = AppState.items.find(i => i.id === action.id);
         if (item) {
             item.quantity = action.oldVal;
-            Storage.save();
-            renderInventory();
         }
     }
+    else if (action.type === 'restoreHouse') {
+        struct[action.name] = action.data; // Restore subtree
+        populateFilterDropdowns('house');
+    }
+    else if (action.type === 'restoreRoom') {
+        if (struct[action.house]) { // Safety
+            struct[action.house][action.name] = action.data;
+        }
+    }
+    else if (action.type === 'restoreStorage') {
+        if (struct[action.house] && struct[action.house][action.room]) {
+            // Restore at index if possible, else push
+            // action.data is the index
+            if (typeof action.data === 'number') {
+                struct[action.house][action.room].splice(action.data, 0, action.name);
+            } else {
+                struct[action.house][action.room].push(action.name);
+            }
+        }
+    }
+
+    Storage.save();
+    renderInventory();
+    renderLocationTree();
+    populateFilterDropdowns('init');
+
     AppState.lastAction = null;
 }
 
@@ -812,7 +838,7 @@ window.renameLocation = function (type, oldName, pHouse, pRoom) {
 window.deleteLocation = function (type, name, pHouse, pRoom) {
     const struct = AppState.locationStructure;
 
-    // Recursively check for items
+    // 1. Constraint Check (Still block if items exist)
     const hasItems = (h, r, s) => {
         return AppState.items.some(i => {
             const l = i.location || {};
@@ -825,25 +851,95 @@ window.deleteLocation = function (type, name, pHouse, pRoom) {
 
     if (type === 'house') {
         if (hasItems(name)) { alert("Cannot delete: House contains items."); return; }
-        if (confirm(`Delete House ${name}?`)) delete struct[name];
-    }
-    if (type === 'room') {
+    } else if (type === 'room') {
         if (hasItems(pHouse, name)) { alert("Cannot delete: Room contains items."); return; }
-        if (confirm(`Delete Room ${name}?`)) delete struct[pHouse][name];
-    }
-    if (type === 'storage') {
+    } else if (type === 'storage') {
         if (hasItems(pHouse, pRoom, name)) { alert("Cannot delete: Storage contains items."); return; }
-        if (confirm(`Delete Storage ${name}?`)) {
-            const arr = struct[pHouse][pRoom];
-            const idx = arr.indexOf(name);
-            if (idx > -1) arr.splice(idx, 1);
+    }
+
+    // 2. Snapshot Data for Undo
+    let restoredData;
+    let undoType = '';
+
+    if (type === 'house') {
+        restoredData = JSON.parse(JSON.stringify(struct[name])); // Deep Clone content
+        undoType = 'restoreHouse';
+        delete struct[name];
+    }
+    else if (type === 'room') {
+        restoredData = JSON.parse(JSON.stringify(struct[pHouse][name]));
+        undoType = 'restoreRoom';
+        delete struct[pHouse][name];
+    }
+    else if (type === 'storage') {
+        // Storage is just a string in an array, restoring it means adding it back
+        // But we need to know the index or just push it? Push is fine.
+        const arr = struct[pHouse][pRoom];
+        const idx = arr.indexOf(name);
+        if (idx > -1) {
+            arr.splice(idx, 1);
+            restoredData = idx; // Store index to be precise? Or just string?
+            undoType = 'restoreStorage';
+        } else return;
+    }
+
+    // 3. Save & Render
+    Storage.save();
+    renderLocationTree();
+    populateFilterDropdowns('init');
+
+    // 4. Capture & Toast
+    AppState.lastAction = {
+        type: undoType,
+        name: name,
+        data: restoredData,
+        house: pHouse,
+        room: pRoom
+    };
+
+    showUndoToast(`${type} "${name}" deleted`, performUndo);
+};
+
+function performUndo() {
+    if (!AppState.lastAction) return;
+    const action = AppState.lastAction;
+    const struct = AppState.locationStructure;
+
+    // --- RESTORE LOGIC ---
+    if (action.type === 'updateQty') {
+        const item = AppState.items.find(i => i.id === action.id);
+        if (item) {
+            item.quantity = action.oldVal;
+        }
+    }
+    else if (action.type === 'restoreHouse') {
+        struct[action.name] = action.data; // Restore subtree
+        populateFilterDropdowns('house');
+    }
+    else if (action.type === 'restoreRoom') {
+        if (struct[action.house]) { // Safety
+            struct[action.house][action.name] = action.data;
+        }
+    }
+    else if (action.type === 'restoreStorage') {
+        if (struct[action.house] && struct[action.house][action.room]) {
+            struct[action.house][action.room].splice(action.data, 0, action.name); // Insert back at index? or just push
+            // action.data was the Index if I stored logic correctly?
+            // Actually in delete I stored 'data' as 'idx'. 
+            // Let's refine: delete logic saves idx.
         }
     }
 
     Storage.save();
+    renderInventory();
     renderLocationTree();
     populateFilterDropdowns('init');
-};
+
+    AppState.lastAction = null;
+
+    // Feedback
+    // Maybe hide toast immediately? Yes per logic.
+}
 
 
 // --- SMART SCANNER ---
