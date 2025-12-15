@@ -29,10 +29,32 @@ const AppState = {
     isScanning: false
 };
 
-// ... (Storage object remains same, skipping for brevity) ...
+const Storage = {
+    save: () => {
+        localStorage.setItem('inventory_data', JSON.stringify({
+            items: AppState.items,
+            categories: AppState.categories,
+            locationStructure: AppState.locationStructure
+        }));
+    },
+    load: () => {
+        const data = localStorage.getItem('inventory_data');
+        if (data) {
+            const parsed = JSON.parse(data);
+            AppState.items = parsed.items || [];
+            AppState.categories = parsed.categories || ['Food', 'Facial', 'General', 'Medicine', 'Stationery'];
+            AppState.locationStructure = parsed.locationStructure || {};
+        }
+    }
+};
 
 // --- DOM ELEMENTS ---
-// ... (View elements remain same) ...
+const views = {
+    inventory: document.getElementById('view-inventory'),
+    addItem: document.getElementById('view-add-item'),
+    locations: document.getElementById('view-locations')
+};
+
 const navItems = document.querySelectorAll('.nav-item');
 
 // Inventory View Elements
@@ -53,9 +75,38 @@ const filterInputs = {
     clear: document.getElementById('btn-clear-all-filters')
 };
 
-// ... (Add Form elements remain same) ...
+// Add Form Elements
+const form = {
+    inputs: document.getElementById('add-item-form'),
+    barcode: document.getElementById('item-barcode'),
+    name: document.getElementById('item-name'),
+    quantity: document.getElementById('item-quantity'),
+    isOpened: document.getElementById('item-opened'),
+    openedMeta: document.getElementById('opened-meta-fields'),
+    openedDate: document.getElementById('item-opened-date'),
+    shelfLife: document.getElementById('item-shelf-life'),
+    category: document.getElementById('item-category'),
+    house: document.getElementById('loc-house'),
+    room: document.getElementById('loc-room'),
+    storage: document.getElementById('loc-storage'),
+    expiry: document.getElementById('item-expiry'),
 
-// ... (Rest of Dom Elements) ...
+    // Buttons inside form
+    btnScanBarcode: document.getElementById('btn-scan-input'),
+    btnAddCat: document.getElementById('btn-add-category'),
+    btnAddHouse: document.getElementById('btn-add-house'),
+    btnScanLocation: document.getElementById('btn-scan-location-input')
+};
+
+// Location View Elements
+const locationTreeContainer = document.getElementById('location-tree-container');
+const btnAddRoot = document.getElementById('btn-add-root');
+const btnAddHouse = document.getElementById('btn-add-house'); // Hierarchy form button
+
+// Scanner Overlay
+const scannerOverlay = document.getElementById('scanner-overlay');
+const scannerStatus = document.getElementById('scanner-status');
+const btnCloseScanner = document.getElementById('btn-close-scanner');
 
 
 // --- INITIALIZATION ---
@@ -72,7 +123,25 @@ function init() {
     if (window.feather) feather.replace();
 }
 
-// ... (Navigation remains same) ...
+function setupNavigation() {
+    navItems.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetId = btn.getAttribute('data-target');
+
+            // Visual Active State
+            navItems.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // View Switching
+            Object.values(views).forEach(v => v.classList.remove('active'));
+            document.getElementById(targetId).classList.add('active');
+
+            // specific init
+            if (targetId === 'view-add-item') initAddForm();
+            if (targetId === 'view-locations') renderLocationTree();
+        });
+    });
+}
 
 // --- INVENTORY UI ---
 function setupInventoryUI() {
@@ -457,7 +526,7 @@ function setupForm() {
 // --- LOCATION TREE & CRUD ---
 function setupLocationsUI() {
     // Top-level adds
-    btnAddHouse.onclick = () => {
+    btnAddRoot.onclick = () => {
         const h = prompt("New House Name:");
         if (h && !AppState.locationStructure[h]) {
             AppState.locationStructure[h] = {};
