@@ -403,6 +403,7 @@ function renderInventory() {
         // Item Click Listener (excluding action buttons)
         card.onclick = (e) => {
             if (e.target.closest('button')) return; // Ignore button clicks
+            // console.log("Card Clicked", item.name);
             openItemDetails(item);
         };
 
@@ -499,52 +500,58 @@ function setupItemDetailsUI() {
 }
 
 function openItemDetails(item) {
-    const modal = document.getElementById('item-details-modal');
-    const struct = AppState.locationStructure;
+    try {
+        const modal = document.getElementById('item-details-modal');
+        if (!modal) { alert("Error: Modal not found in DOM"); return; }
 
-    // Fill ID
-    document.getElementById('edit-item-id').value = item.id;
-    document.getElementById('edit-name').value = item.name;
-    document.getElementById('edit-qty').value = item.quantity;
-    document.getElementById('edit-expiry').value = item.expiry || '';
+        const struct = AppState.locationStructure;
 
-    // Category
-    const catSelect = document.getElementById('edit-category');
-    catSelect.innerHTML = '';
-    AppState.categories.forEach(c => catSelect.add(new Option(c, c)));
-    catSelect.value = item.category || 'Uncategorized';
+        // Fill ID
+        document.getElementById('edit-item-id').value = item.id;
+        document.getElementById('edit-name').value = item.name;
+        document.getElementById('edit-qty').value = item.quantity;
+        document.getElementById('edit-expiry').value = item.expiry || '';
 
-    // Opened
-    const chkOpen = document.getElementById('edit-opened');
-    chkOpen.checked = !!item.isOpened;
-    document.getElementById('edit-opened-date').value = item.openedDate || '';
-    document.getElementById('edit-shelf-life').value = item.shelfLife || '';
+        // Category
+        const catSelect = document.getElementById('edit-category');
+        catSelect.innerHTML = '';
+        AppState.categories.forEach(c => catSelect.add(new Option(c, c)));
+        catSelect.value = item.category || 'Uncategorized';
 
-    // Location (Complex)
-    const hSelect = document.getElementById('edit-house');
-    const rSelect = document.getElementById('edit-room');
-    const sSelect = document.getElementById('edit-storage');
+        // Opened
+        const chkOpen = document.getElementById('edit-opened');
+        chkOpen.checked = !!item.isOpened;
+        document.getElementById('edit-opened-date').value = item.openedDate || '';
+        document.getElementById('edit-shelf-life').value = item.shelfLife || '';
 
-    // 1. Populate Houses
-    hSelect.innerHTML = '<option value="">Select House...</option>';
-    Object.keys(struct).sort().forEach(h => hSelect.add(new Option(h, h)));
-    hSelect.value = item.location?.house || '';
+        // Location (Complex)
+        const hSelect = document.getElementById('edit-house');
+        const rSelect = document.getElementById('edit-room');
+        const sSelect = document.getElementById('edit-storage');
 
-    // 2. Populate Rooms based on current House
-    rSelect.innerHTML = '<option value="">Select Room...</option>';
-    if (item.location?.house && struct[item.location.house]) {
-        Object.keys(struct[item.location.house]).sort().forEach(r => rSelect.add(new Option(r, r)));
-        rSelect.value = item.location?.room || '';
+        // 1. Populate Houses
+        hSelect.innerHTML = '<option value="">Select House...</option>';
+        Object.keys(struct).sort().forEach(h => hSelect.add(new Option(h, h)));
+        hSelect.value = item.location?.house || '';
+
+        // 2. Populate Rooms based on current House
+        rSelect.innerHTML = '<option value="">Select Room...</option>';
+        if (item.location?.house && struct[item.location.house]) {
+            Object.keys(struct[item.location.house]).sort().forEach(r => rSelect.add(new Option(r, r)));
+            rSelect.value = item.location?.room || '';
+        }
+
+        // 3. Populate Storages based on current Room
+        sSelect.innerHTML = '<option value="">Select Storage...</option>';
+        if (item.location?.room && struct[item.location.house]?.[item.location.room]) {
+            struct[item.location.house][item.location.room].sort().forEach(s => sSelect.add(new Option(s, s)));
+            sSelect.value = item.location?.storage || '';
+        }
+
+        modal.classList.remove('hidden');
+    } catch (e) {
+        alert("Details Error: " + e.message);
     }
-
-    // 3. Populate Storages based on current Room
-    sSelect.innerHTML = '<option value="">Select Storage...</option>';
-    if (item.location?.room && struct[item.location.house]?.[item.location.room]) {
-        struct[item.location.house][item.location.room].sort().forEach(s => sSelect.add(new Option(s, s)));
-        sSelect.value = item.location?.storage || '';
-    }
-
-    modal.classList.remove('hidden');
 }
 
 // Undo State
