@@ -401,12 +401,12 @@ function renderInventory() {
             </div>
         `;
         // Item Click Listener (excluding action buttons)
-        div.onclick = (e) => {
+        card.onclick = (e) => {
             if (e.target.closest('button')) return; // Ignore button clicks
             openItemDetails(item);
         };
 
-        inventoryList.appendChild(div);
+        inventoryList.appendChild(card);
     });
 
     if (window.feather) feather.replace();
