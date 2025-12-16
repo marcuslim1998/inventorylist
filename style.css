@@ -817,7 +817,8 @@ select {
     padding: 20px;
     padding-bottom: 140px;
     /* Ensure content clears Bottom Nav + FAB */
-    display: none;
+    display: flex;
+    /* Restored from 'none' */
     flex-direction: column;
     background: black;
     z-index: 200;
@@ -826,7 +827,7 @@ select {
 }
 
 .overlay.hidden {
-    display: none;
+    display: none !important;
 }
 
 .scanner-container {
