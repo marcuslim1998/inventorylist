@@ -66,7 +66,9 @@ function init() {
     setupForm();
     setupScannerUI();
     setupLocationsUI();
-    setupSettingsUI(); // NEW
+    setupLocationsUI();
+    setupSettingsUI();
+    setupItemDetailsUI(); // NEW
 
     renderInventory();
     renderLocationTree();
@@ -398,10 +400,151 @@ function renderInventory() {
                 </div>
             </div>
         `;
-        inventoryList.appendChild(card);
+        // Item Click Listener (excluding action buttons)
+        div.onclick = (e) => {
+            if (e.target.closest('button')) return; // Ignore button clicks
+            openItemDetails(item);
+        };
+
+        inventoryList.appendChild(div);
     });
 
     if (window.feather) feather.replace();
+}
+
+// --- ITEM DETAILS MODAL ---
+function setupItemDetailsUI() {
+    const modal = document.getElementById('item-details-modal');
+    const form = document.getElementById('edit-item-form');
+    const btnClose = document.getElementById('btn-close-details');
+    const btnDelete = document.getElementById('btn-delete-item');
+
+    // Close Logic
+    const close = () => modal.classList.add('hidden');
+    btnClose.onclick = close;
+
+    // Hierarchy Logic for Edit Form
+    const updateEditHierarchy = (level) => {
+        const s = AppState.locationStructure;
+        const h = document.getElementById('edit-house').value;
+        const rSelect = document.getElementById('edit-room');
+        const sSelect = document.getElementById('edit-storage');
+
+        if (level === 'house') {
+            rSelect.innerHTML = '<option value="">Select Room...</option>';
+            sSelect.innerHTML = '<option value="">Select Storage...</option>';
+            if (h && s[h]) {
+                Object.keys(s[h]).sort().forEach(r => rSelect.add(new Option(r, r)));
+            }
+        }
+        if (level === 'room') {
+            const r = rSelect.value;
+            sSelect.innerHTML = '<option value="">Select Storage...</option>';
+            if (h && r && s[h][r]) {
+                s[h][r].sort().forEach(st => sSelect.add(new Option(st, st)));
+            }
+        }
+    };
+
+    document.getElementById('edit-house').onchange = () => updateEditHierarchy('house');
+    document.getElementById('edit-room').onchange = () => updateEditHierarchy('room');
+
+    // Save Changes
+    form.onsubmit = (e) => {
+        e.preventDefault();
+        const id = document.getElementById('edit-item-id').value;
+        const item = AppState.items.find(i => i.id === id);
+        if (!item) return;
+
+        // Update Properties
+        item.name = document.getElementById('edit-name').value;
+        item.category = document.getElementById('edit-category').value;
+        item.quantity = parseInt(document.getElementById('edit-qty').value) || 0;
+        item.expiry = document.getElementById('edit-expiry').value;
+        item.isOpened = document.getElementById('edit-opened').checked;
+
+        if (item.isOpened) {
+            item.openedDate = document.getElementById('edit-opened-date').value;
+            item.shelfLife = document.getElementById('edit-shelf-life').value;
+        }
+
+        item.location = {
+            house: document.getElementById('edit-house').value,
+            room: document.getElementById('edit-room').value,
+            storage: document.getElementById('edit-storage').value
+        };
+
+        Storage.save();
+        renderInventory();
+        close(); // Close modal
+
+        // No toast for edit, just close. Or maybe simple alert? User didn't ask.
+    };
+
+    // Delete Item
+    btnDelete.onclick = () => {
+        const id = document.getElementById('edit-item-id').value;
+        if (confirm("Delete this item permanently?")) {
+            AppState.items = AppState.items.filter(i => i.id !== id);
+            Storage.save();
+            renderInventory();
+            renderStats();
+            close();
+
+            // Undo for Item Delete? User didn't explicitly ask but good to have
+            // AppState.lastAction = { type: 'itemDelete', item: itemSnapshot ... };
+            // For now just basic delete as requested.
+        }
+    };
+}
+
+function openItemDetails(item) {
+    const modal = document.getElementById('item-details-modal');
+    const struct = AppState.locationStructure;
+
+    // Fill ID
+    document.getElementById('edit-item-id').value = item.id;
+    document.getElementById('edit-name').value = item.name;
+    document.getElementById('edit-qty').value = item.quantity;
+    document.getElementById('edit-expiry').value = item.expiry || '';
+
+    // Category
+    const catSelect = document.getElementById('edit-category');
+    catSelect.innerHTML = '';
+    AppState.categories.forEach(c => catSelect.add(new Option(c, c)));
+    catSelect.value = item.category || 'Uncategorized';
+
+    // Opened
+    const chkOpen = document.getElementById('edit-opened');
+    chkOpen.checked = !!item.isOpened;
+    document.getElementById('edit-opened-date').value = item.openedDate || '';
+    document.getElementById('edit-shelf-life').value = item.shelfLife || '';
+
+    // Location (Complex)
+    const hSelect = document.getElementById('edit-house');
+    const rSelect = document.getElementById('edit-room');
+    const sSelect = document.getElementById('edit-storage');
+
+    // 1. Populate Houses
+    hSelect.innerHTML = '<option value="">Select House...</option>';
+    Object.keys(struct).sort().forEach(h => hSelect.add(new Option(h, h)));
+    hSelect.value = item.location?.house || '';
+
+    // 2. Populate Rooms based on current House
+    rSelect.innerHTML = '<option value="">Select Room...</option>';
+    if (item.location?.house && struct[item.location.house]) {
+        Object.keys(struct[item.location.house]).sort().forEach(r => rSelect.add(new Option(r, r)));
+        rSelect.value = item.location?.room || '';
+    }
+
+    // 3. Populate Storages based on current Room
+    sSelect.innerHTML = '<option value="">Select Storage...</option>';
+    if (item.location?.room && struct[item.location.house]?.[item.location.room]) {
+        struct[item.location.house][item.location.room].sort().forEach(s => sSelect.add(new Option(s, s)));
+        sSelect.value = item.location?.storage || '';
+    }
+
+    modal.classList.remove('hidden');
 }
 
 // Undo State

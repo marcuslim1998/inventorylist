@@ -648,7 +648,8 @@ select {
 /* FAB Main Add Button */
 .fab-main {
     position: fixed;
-    bottom: 90px;
+    bottom: 110px;
+    /* Lifted to clear bottom nav (85px) */
     right: 20px;
     width: 56px;
     height: 56px;
@@ -809,13 +810,17 @@ select {
 /* Scanner Overlay */
 .overlay {
     position: fixed;
-    top: 0;
     left: 0;
-    right: 0;
-    bottom: 0;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    padding: 20px;
+    padding-bottom: 140px;
+    /* Ensure content clears Bottom Nav + FAB */
+    display: none;
+    flex-direction: column;
     background: black;
     z-index: 200;
-    display: flex;
     justify-content: center;
     align-items: center;
 }

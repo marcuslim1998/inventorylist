@@ -321,7 +321,74 @@
 
     </main>
 
-    <!-- UNDO TOAST (Fixed Position) -->
+    <!-- VIEW: Item Details & Edit Modal -->
+    <div id="item-details-modal" class="overlay hidden">
+        <div class="modal-card" style="width: 90%; max-width: 400px; max-height: 90vh; overflow-y: auto;">
+            <div class="section-header">
+                <h3>Edit Item</h3>
+                <button id="btn-close-details" class="btn-float-close" style="position:static;">X</button>
+            </div>
+
+            <form id="edit-item-form">
+                <input type="hidden" id="edit-item-id">
+
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" id="edit-name" required>
+                </div>
+
+                <div class="form-group two-col">
+                    <div>
+                        <label>Category</label>
+                        <select id="edit-category"></select>
+                    </div>
+                    <div>
+                        <label>Quantity</label>
+                        <input type="number" id="edit-qty">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Location</label>
+                    <div class="hierarchy-inputs">
+                        <select id="edit-house" class="hier-select"></select>
+                        <select id="edit-room" class="hier-select"></select>
+                        <select id="edit-storage" class="hier-select"></select>
+                    </div>
+                </div>
+
+                <div class="form-group two-col">
+                    <div>
+                        <label>Expiry</label>
+                        <input type="date" id="edit-expiry">
+                    </div>
+                    <div style="display:flex; align-items:center; margin-top:20px;">
+                        <input type="checkbox" id="edit-opened" style="width:auto; margin-right:8px;">
+                        <label for="edit-opened" style="margin:0;">Opened?</label>
+                    </div>
+                </div>
+
+                <div class="form-group two-col" id="edit-opened-meta" class="hidden">
+                    <div>
+                        <label>Date Opened</label>
+                        <input type="date" id="edit-opened-date">
+                    </div>
+                    <div>
+                        <label>Shelf Life (mth)</label>
+                        <input type="number" id="edit-shelf-life">
+                    </div>
+                </div>
+
+                <div class="form-actions" style="margin-top:20px; border-top:1px solid #eee; padding-top:15px;">
+                    <button type="button" id="btn-delete-item" class="btn-cancel"
+                        style="color:var(--danger-color); border-color:var(--danger-color);">Delete Item</button>
+                    <button type="submit" class="btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- UNDO TOAST -->
     <div id="undo-toast" class="toast hidden">
         <span id="undo-message">Notification</span>
         <button id="btn-undo" class="text-btn"
