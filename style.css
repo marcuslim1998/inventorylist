@@ -752,6 +752,43 @@ select {
     word-break: break-word;
 }
 
+/* Modal Polish */
+.modal-card .section-header {
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.modal-card .form-group {
+    margin-bottom: 16px;
+}
+
+.modal-card .form-actions {
+    display: flex;
+    justify-content: space-between;
+    /* Delete Left, Save Right */
+    align-items: center;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+    margin-top: 20px;
+}
+
+/* Danger Action Button */
+.btn-danger-outline {
+    background: white;
+    border: 1px solid var(--danger-color);
+    color: var(--danger-color);
+    padding: 8px 16px;
+    border-radius: var(--border-radius);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.btn-danger-outline:active {
+    background: #fff0f0;
+}
+
 .action-row {
     display: flex;
     gap: 12px;
