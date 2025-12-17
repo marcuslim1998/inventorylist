@@ -59,33 +59,38 @@ const views = {
 // ...
 
 // --- INITIALIZATION ---
+// --- INITIALIZATION ---
 function init() {
-    Storage.load();
-    // Global Undo Button
-    const btnUndo = document.getElementById('btn-undo');
-    if (btnUndo) {
-        btnUndo.onclick = () => {
-            // alert("Undo Clicked");
-            performUndo();
-            // Hide Toast after click
-            document.getElementById('undo-toast').classList.add('hidden');
-        };
-    } else {
-        console.error("Undo Button not found in DOM");
+    try {
+        Storage.load();
+        // Global Undo Button
+        const btnUndo = document.getElementById('btn-undo');
+        if (btnUndo) {
+            btnUndo.onclick = () => {
+                // alert("Undo Clicked");
+                performUndo();
+                // Hide Toast after click
+                document.getElementById('undo-toast').classList.add('hidden');
+            };
+        } else {
+            console.error("Undo Button not found in DOM");
+        }
+
+        setupNavigation();
+        setupInventoryUI();
+        setupForm();
+        setupScannerUI();
+        setupLocationsUI();
+        // setupLocationsUI(); // Removed Duplicate
+        setupSettingsUI();
+        setupItemDetailsUI(); // NEW
+
+        renderInventory();
+        renderLocationTree();
+        if (window.feather) feather.replace();
+    } catch (e) {
+        alert("Init Error: " + e.message);
     }
-
-    setupNavigation();
-    setupInventoryUI();
-    setupForm();
-    setupScannerUI();
-    setupLocationsUI();
-    setupLocationsUI();
-    setupSettingsUI();
-    setupItemDetailsUI(); // NEW
-
-    renderInventory();
-    renderLocationTree();
-    if (window.feather) feather.replace();
 }
 
 const navItems = document.querySelectorAll('.nav-item');
@@ -1473,13 +1478,17 @@ function startScanning(target) {
     scannerOverlay.classList.remove('hidden');
     scannerStatus.textContent = "Checking Camera...";
 
-    if (!AppState.html5QrCode) AppState.html5QrCode = new Html5Qrcode("reader");
+    if (!AppState.html5QrCode) {
+        AppState.html5QrCode = new Html5Qrcode("reader");
+    }
 
     AppState.html5QrCode.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 250, height: 250 } },
         (text) => handleSmartScan(text)
-    ).catch(err => {
+    ).then(() => {
+        scannerStatus.textContent = "Point camera at code...";
+    }).catch(err => {
         alert("Camera Error: " + err);
         stopScanning();
     });

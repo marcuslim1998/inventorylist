@@ -778,15 +778,20 @@ select {
     background: white;
     border: 1px solid var(--danger-color);
     color: var(--danger-color);
-    padding: 8px 16px;
+    padding: 10px 20px;
     border-radius: var(--border-radius);
     font-weight: 600;
-    font-size: 13px;
+    font-size: 14px;
     cursor: pointer;
 }
 
 .btn-danger-outline:active {
     background: #fff0f0;
+}
+
+.btn-primary {
+    padding: 10px 20px;
+    font-size: 14px;
 }
 
 .action-row {
@@ -847,18 +852,14 @@ select {
 /* Scanner Overlay */
 .overlay {
     position: fixed;
+    top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    overflow-y: auto;
-    padding: 20px;
-    padding-bottom: 140px;
-    /* Ensure content clears Bottom Nav + FAB */
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 9999;
     display: flex;
-    /* Restored from 'none' */
     flex-direction: column;
-    background: black;
-    z-index: 200;
     justify-content: center;
     align-items: center;
 }
@@ -870,7 +871,7 @@ select {
 .scanner-container {
     position: relative;
     width: 100%;
-    /* remove height: 100% to let html5-qrcode size itself, but keep centered */
+    max-width: 600px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -880,30 +881,45 @@ select {
 #reader {
     width: 100%;
     max-width: 500px;
-    background: black;
+    min-height: 400px;
+}
+
+#reader video {
+    width: 100% !important;
+    height: auto !important;
+    display: block !important;
+}
+
+#reader canvas {
+    display: none !important;
 }
 
 .btn-float-close {
-    position: absolute;
-    top: 40px;
+    position: fixed;
+    top: 20px;
     right: 20px;
-    width: 40px;
-    height: 40px;
-    background: rgba(255, 255, 255, 0.3);
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.9);
     border: none;
     border-radius: 50%;
-    color: white;
-    font-size: 20px;
-    z-index: 201;
+    color: #333;
+    font-size: 24px;
+    font-weight: bold;
+    z-index: 10000;
+    cursor: pointer;
 }
 
 #scanner-status {
-    position: absolute;
-    bottom: 80px;
-    width: 100%;
+    position: fixed;
+    bottom: 40px;
+    left: 0;
+    right: 0;
     text-align: center;
     color: white;
-    font-weight: 500;
+    font-weight: 600;
+    font-size: 16px;
+    z-index: 10000;
 }
 
 /* QR Modal */

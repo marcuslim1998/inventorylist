@@ -323,9 +323,10 @@
     <!-- VIEW: Item Details & Edit Modal -->
     <div id="item-details-modal" class="overlay hidden">
         <div class="modal-card" style="width: 90%; max-width: 400px; max-height: 90vh; overflow-y: auto;">
-            <div class="section-header">
-                <h3>Edit Item</h3>
-                <button id="btn-close-details" class="btn-float-close" style="position:static;">X</button>
+            <div class="section-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0;">Edit Item</h3>
+                <button id="btn-close-details" class="btn-float-close"
+                    style="position: static; width: 32px; height: 32px; font-size: 18px;">X</button>
             </div>
 
             <form id="edit-item-form">
@@ -378,7 +379,7 @@
                     </div>
                 </div>
 
-                <div class="form-actions" style="margin-top:20px; border-top:1px solid #eee; padding-top:15px;">
+                <div class="form-actions">
                     <button type="button" id="btn-delete-item" class="btn-danger-outline">Delete Item</button>
                     <button type="submit" class="btn-primary">Save Changes</button>
                 </div>
