@@ -637,13 +637,10 @@ function showUndoToast(message, undoCallback) {
 
 // --- UNDO SYSTEM ---
 function performUndo() {
-    alert("DEBUG: performUndo called"); // Global Check
     if (!AppState.lastAction) {
-        alert("DEBUG: No lastAction found");
         return;
     }
     const action = AppState.lastAction;
-    alert(`DEBUG: Action Type: ${action.type}`);
 
     const struct = AppState.locationStructure;
 
@@ -652,24 +649,6 @@ function performUndo() {
         const item = AppState.items.find(i => i.id === action.id);
         if (item) {
             item.quantity = action.oldVal;
-        }
-    }
-    else if (action.type === 'restoreHouse') {
-        struct[action.name] = action.data; // Restore subtree
-        populateFilterDropdowns('house');
-    }
-    else if (action.type === 'restoreRoom') {
-        if (struct[action.house]) { // Safety
-            struct[action.house][action.name] = action.data;
-        }
-    }
-    else if (action.type === 'restoreStorage') {
-        if (struct[action.house] && struct[action.house][action.room]) {
-            // Restore string to array
-            const arr = struct[action.house][action.room];
-            if (!arr.includes(action.name)) {
-                arr.push(action.name);
-            }
         }
     }
     // MISSING LOGIC ADDED HERE
@@ -695,23 +674,35 @@ function performUndo() {
         }
 
         // Restore Items
-        let count = 0;
-        alert(`DEBUG: Undo Delete. Target: ${action.name}. IDs to restore: ${action.ids.length}`);
-
         action.ids.forEach(id => {
             const item = AppState.items.find(i => i.id === id);
             if (item) {
                 item.category = action.name;
-                count++;
             }
         });
-
-        alert(`DEBUG: Restored ${count} items to ${action.name}`);
 
         // Ensure consistency
         syncCategories();
 
         renderCategorySettings();
+    }
+    else if (action.type === 'restoreHouse') {
+        struct[action.name] = action.data; // Restore subtree
+        populateFilterDropdowns('house');
+    }
+    else if (action.type === 'restoreRoom') {
+        if (struct[action.house]) { // Safety
+            struct[action.house][action.name] = action.data;
+        }
+    }
+    else if (action.type === 'restoreStorage') {
+        if (struct[action.house] && struct[action.house][action.room]) {
+            // Restore string to array
+            const arr = struct[action.house][action.room];
+            if (!arr.includes(action.name)) {
+                arr.push(action.name);
+            }
+        }
     }
 
     Storage.save();
@@ -1073,8 +1064,6 @@ function renderCategorySettings() {
 
         // Bind Delete
         li.querySelector('.del-cat-btn').onclick = () => {
-            alert("DEBUG: Delete Category Clicked");
-
             // Capture Affected Items
             const affectedIds = AppState.items.filter(i => i.category === cat).map(i => i.id);
 
