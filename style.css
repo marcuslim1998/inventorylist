@@ -45,8 +45,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    position: sticky;
-    top: 0;
+    position: relative;
     z-index: 100;
 }
 
@@ -606,7 +605,7 @@ select {
     justify-content: space-evenly;
     align-items: center;
     padding-bottom: env(safe-area-inset-bottom);
-    height: calc(85px + env(safe-area-inset-bottom));
+    height: calc(70px + env(safe-area-inset-bottom));
     /* Bigger Area */
     z-index: 90;
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
@@ -648,7 +647,7 @@ select {
 /* FAB Main Add Button */
 .fab-main {
     position: fixed;
-    bottom: 110px;
+    bottom: 95px;
     /* Lifted to clear bottom nav (85px) */
     right: 20px;
     width: 56px;
