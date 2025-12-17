@@ -61,6 +61,19 @@ const views = {
 // --- INITIALIZATION ---
 function init() {
     Storage.load();
+    // Global Undo Button
+    const btnUndo = document.getElementById('btn-undo');
+    if (btnUndo) {
+        btnUndo.onclick = () => {
+            // alert("Undo Clicked");
+            performUndo();
+            // Hide Toast after click
+            document.getElementById('undo-toast').classList.add('hidden');
+        };
+    } else {
+        console.error("Undo Button not found in DOM");
+    }
+
     setupNavigation();
     setupInventoryUI();
     setupForm();
@@ -450,6 +463,14 @@ function setupItemDetailsUI() {
     document.getElementById('edit-house').onchange = () => updateEditHierarchy('house');
     document.getElementById('edit-room').onchange = () => updateEditHierarchy('room');
 
+    // Toggle Opened Meta Visibility
+    const chkOpen = document.getElementById('edit-opened');
+    const metaDiv = document.getElementById('edit-opened-meta');
+    chkOpen.onchange = () => {
+        if (chkOpen.checked) metaDiv.classList.remove('hidden');
+        else metaDiv.classList.add('hidden');
+    };
+
     // Save Changes
     form.onsubmit = (e) => {
         e.preventDefault();
@@ -467,6 +488,9 @@ function setupItemDetailsUI() {
         if (item.isOpened) {
             item.openedDate = document.getElementById('edit-opened-date').value;
             item.shelfLife = document.getElementById('edit-shelf-life').value;
+        } else {
+            item.openedDate = null;
+            item.shelfLife = null;
         }
 
         item.location = {
@@ -522,6 +546,11 @@ function openItemDetails(item) {
     chkOpen.checked = !!item.isOpened;
     document.getElementById('edit-opened-date').value = item.openedDate || '';
     document.getElementById('edit-shelf-life').value = item.shelfLife || '';
+
+    // Set Initial Visibility
+    const metaDiv = document.getElementById('edit-opened-meta');
+    if (item.isOpened) metaDiv.classList.remove('hidden');
+    else metaDiv.classList.add('hidden');
 
     // Location (Complex)
     const hSelect = document.getElementById('edit-house');
@@ -582,47 +611,40 @@ window.updateQuantity = function (id, delta) {
     }
 };
 
+// --- TOAST NOTIFICATIONS ---
 function showUndoToast(message, undoCallback) {
-    try {
-        const toast = document.getElementById('undo-toast');
-        if (!toast) {
-            alert("Error: Undo Toast Element Missing!");
-            return;
-        }
+    const toast = document.getElementById('undo-toast');
+    const msgSpan = document.getElementById('undo-message');
+    const btnUndo = document.getElementById('btn-undo');
 
-        const msgEl = document.getElementById('undo-message');
-        const btn = document.getElementById('btn-undo');
+    if (!toast || !msgSpan || !btnUndo) return;
 
-        msgEl.textContent = message;
+    msgSpan.textContent = message;
+    toast.classList.remove('hidden');
 
-        // FORCE DISPLAY
-        toast.classList.remove('hidden');
-        toast.style.display = 'flex';
+    // Re-bind click every time
+    btnUndo.onclick = () => {
+        undoCallback();
+        toast.classList.add('hidden');
+    };
 
-        // Clear previous timeout
-        if (AppState.toastTimeout) clearTimeout(AppState.toastTimeout);
-
-        // Bind Undo
-        btn.onclick = () => {
-            undoCallback();
-            toast.classList.add('hidden');
-            toast.style.display = 'none';
-        };
-
-        // Auto-hide
-        AppState.toastTimeout = setTimeout(() => {
-            toast.classList.add('hidden');
-            toast.style.display = 'none';
-        }, 4000);
-
-    } catch (e) {
-        alert("Toast Error: " + e.message);
-    }
+    // Auto-hide after 5 seconds
+    if (window.undoTimer) clearTimeout(window.undoTimer);
+    window.undoTimer = setTimeout(() => {
+        toast.classList.add('hidden');
+    }, 5000);
 }
 
+// --- UNDO SYSTEM ---
 function performUndo() {
-    if (!AppState.lastAction) return;
+    alert("DEBUG: performUndo called"); // Global Check
+    if (!AppState.lastAction) {
+        alert("DEBUG: No lastAction found");
+        return;
+    }
     const action = AppState.lastAction;
+    alert(`DEBUG: Action Type: ${action.type}`);
+
     const struct = AppState.locationStructure;
 
     // --- RESTORE LOGIC ---
@@ -666,9 +688,6 @@ function performUndo() {
         renderCategorySettings();
     }
     else if (action.type === 'catDelete') {
-        // DEBUG
-        // alert(`Undo Delete: Restoring "${action.name}"`);
-
         // Restore Category
         if (!AppState.categories.includes(action.name)) {
             AppState.categories.push(action.name);
@@ -677,6 +696,8 @@ function performUndo() {
 
         // Restore Items
         let count = 0;
+        alert(`DEBUG: Undo Delete. Target: ${action.name}. IDs to restore: ${action.ids.length}`);
+
         action.ids.forEach(id => {
             const item = AppState.items.find(i => i.id === id);
             if (item) {
@@ -685,11 +706,12 @@ function performUndo() {
             }
         });
 
+        alert(`DEBUG: Restored ${count} items to ${action.name}`);
+
         // Ensure consistency
         syncCategories();
 
         renderCategorySettings();
-        // alert(`Restored "${action.name}" and updated ${count} items.`);
     }
 
     Storage.save();
@@ -1051,6 +1073,8 @@ function renderCategorySettings() {
 
         // Bind Delete
         li.querySelector('.del-cat-btn').onclick = () => {
+            alert("DEBUG: Delete Category Clicked");
+
             // Capture Affected Items
             const affectedIds = AppState.items.filter(i => i.category === cat).map(i => i.id);
 

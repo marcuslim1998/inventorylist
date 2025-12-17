@@ -993,15 +993,52 @@ select {
 
     /* Hide unwanted UI during print */
     .no-print,
-    .app-header,
+    .fab,
     .bottom-nav,
-    .toast,
-    .overlay {
+    .overlay,
+    .modal {
         display: none !important;
     }
 }
 
-color: var(--text-secondary);
+/* Undo Toast Styles */
+#undo-toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 30px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: opacity 0.3s ease;
+}
+
+#undo-toast.hidden {
+    display: none !important;
+}
+
+#undo-message {
+    font-size: 14px;
+}
+
+#btn-undo {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+#btn-undo:active {
+    background: rgba(255, 255, 255, 0.2);
 }
 
 .empty-state .sub-text {
